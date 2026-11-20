@@ -193,7 +193,7 @@ install_dependencies() { # family
 		;;
 	zypper)
 		say "Installing the graphics and window system libraries (zypper)"
-		as_root zypper --non-interactive install Mesa-libEGL1 libGLESv2-2 libwayland-client0 libwayland-egl1 \
+		as_root zypper --non-interactive install Mesa-libEGL1 Mesa-libGLESv2-2 libwayland-client0 libwayland-egl1 \
 			libwayland-cursor0 libxkbcommon0 libxkbcommon-x11-0 libX11-6 libX11-xcb1 libXcursor1 libXfixes3 \
 			libXrender1 libffi8 ||
 			die "could not install the libraries of LeanTerm (EGL, GLES, Wayland, X11, xkbcommon)"

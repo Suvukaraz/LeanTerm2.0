@@ -101,7 +101,7 @@ jobs:
           - image: opensuse/tumbleweed
             prep: zypper -n install curl tar gzip
           - image: archlinux:latest
-            prep: pacman -Sy --noconfirm curl tar gzip
+            prep: pacman -Syu --noconfirm curl tar gzip
     container: ${{ matrix.image }}
     env:
       LEANTERM_VERSION: ${{ needs.build.outputs.version }}
