@@ -1,0 +1,4 @@
+bin
+build/deb-root
+cmd/leanterm/rsrc*.syso
+cmd/leanterm/rsrc

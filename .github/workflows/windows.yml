@@ -1,0 +1,91 @@
+# Tests LeanTerm on Windows and builds the installer as a downloadable artifact:
+# the GUI (cmd/leanterm) with the libghostty engine, cross-compiled on Linux the
+# same way as in the release (see the CI workflow).
+name: Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ZIG_VERSION: 0.17.1
+  GHOSTTY_COMMIT: 5813c9461d5af78b6307a1254d00b1bc190eaccd
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Native, without cgo: vt engine, ConPTY shells (x/xpty), widgets,
+      # the LeanEdit single instance.
+      - name: Go tests
+        run: |
+          go vet ./...
+          go test ./...
+
+  installer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: System packages (NSIS, pkg-config)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nsis pkg-config
+
+      - name: Zig
+        run: |
+          pip install ziglang==$ZIG_VERSION
+          mkdir -p "$HOME/bin"
+          printf '#!/bin/sh\nexec python3 -m ziglang "$@"\n' > "$HOME/bin/zig"
+          chmod +x "$HOME/bin/zig"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/cache/restore@v4
+        id: ghostty-cache
+        with:
+          path: ${{ runner.temp }}/ghostty
+          key: libghostty-vt-windows-${{ env.GHOSTTY_COMMIT }}-zig${{ env.ZIG_VERSION }}
+
+      - name: Build libghostty-vt (Windows)
+        if: steps.ghostty-cache.outputs.cache-hit != 'true'
+        run: |
+          test -f "$RUNNER_TEMP/ghostty/windows/lib/pkgconfig/libghostty-vt-static.pc" ||
+            GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-windows-gnu "$RUNNER_TEMP/ghostty/windows"
+
+      - uses: actions/cache/save@v4
+        if: steps.ghostty-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/ghostty
+          key: libghostty-vt-windows-${{ env.GHOSTTY_COMMIT }}-zig${{ env.ZIG_VERSION }}
+
+      - name: Build installer
+        env:
+          PKG_CONFIG_PATH: ${{ runner.temp }}/ghostty/windows/lib/pkgconfig
+        run: |
+          go install github.com/tc-hib/go-winres@v0.3.3
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          bash build/package-windows.sh "$VERSION"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leanterm-windows-installer
+          path: bin/*_setup.exe

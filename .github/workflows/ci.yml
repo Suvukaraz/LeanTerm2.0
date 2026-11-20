@@ -1,0 +1,222 @@
+# Tests LeanTerm on Linux and Windows and builds the packages as artifacts: the
+# Go tests with both terminal engines (libghostty-vt through cgo, built with
+# Zig, and the pure Go vt engine), a build of the GUI and a run of it under a
+# virtual display (Linux) or on the Windows desktop.
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ZIG_VERSION: 0.17.1
+  GHOSTTY_COMMIT: 5813c9461d5af78b6307a1254d00b1bc190eaccd
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: System packages (Gio, virtual display)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev \
+            libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev \
+            xvfb xdotool x11-apps imagemagick fonts-dejavu-core fonts-wqy-zenhei fonts-noto-color-emoji
+
+      - name: Zig
+        run: |
+          pip install ziglang==$ZIG_VERSION
+          mkdir -p "$HOME/bin"
+          printf '#!/bin/sh\nexec python3 -m ziglang "$@"\n' > "$HOME/bin/zig"
+          chmod +x "$HOME/bin/zig"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/cache/restore@v4
+        id: ghostty-cache
+        with:
+          path: ${{ runner.temp }}/ghostty
+          key: libghostty-vt-${{ env.GHOSTTY_COMMIT }}-zig${{ env.ZIG_VERSION }}
+
+      - name: Build libghostty-vt (Linux and Windows)
+        if: steps.ghostty-cache.outputs.cache-hit != 'true'
+        run: |
+          test -f "$RUNNER_TEMP/ghostty/linux/lib/pkgconfig/libghostty-vt-static.pc" ||
+            GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-linux-gnu.2.34 "$RUNNER_TEMP/ghostty/linux"
+          test -f "$RUNNER_TEMP/ghostty/windows/lib/pkgconfig/libghostty-vt-static.pc" ||
+            GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-windows-gnu "$RUNNER_TEMP/ghostty/windows"
+
+      # Saved right away, so a later failing step does not cost the next run
+      # the Zig build.
+      - uses: actions/cache/save@v4
+        if: steps.ghostty-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/ghostty
+          key: libghostty-vt-${{ env.GHOSTTY_COMMIT }}-zig${{ env.ZIG_VERSION }}
+
+      - name: Tests (both engines)
+        env:
+          PKG_CONFIG_PATH: ${{ runner.temp }}/ghostty/linux/lib/pkgconfig
+        run: |
+          go vet -tags ghostty ./...
+          go test -race -tags ghostty -v ./internal/gui/term/ 2>&1 | tee term-tests.txt
+          grep -q -- '--- PASS: TestKeys/ghostty' term-tests.txt
+          go test -race -tags ghostty ./...
+          # Parsing speed of plain output (seq) for each engine.
+          go test -run '^$' -bench Feed -benchtime 3x -tags ghostty ./internal/gui/term/
+
+      - name: Build LeanTerm
+        env:
+          PKG_CONFIG_PATH: ${{ runner.temp }}/ghostty/linux/lib/pkgconfig
+        run: |
+          go build -tags ghostty -trimpath -o bin/leanterm ./cmd/leanterm
+          # The binary must not need a newer glibc than 2.34.
+          objdump -T bin/leanterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+
+      - name: Cross-build for Windows (Ghostty engine via zig cc)
+        env:
+          PKG_CONFIG_PATH: ${{ runner.temp }}/ghostty/windows/lib/pkgconfig
+          CGO_ENABLED: '1'
+          GOOS: windows
+          GOARCH: amd64
+          CC: zig cc -target x86_64-windows-gnu
+          CXX: zig c++ -target x86_64-windows-gnu
+          CGO_LDFLAGS_ALLOW: '.*[.]lib$'
+        run: |
+          mkdir -p bin/windows
+          go build -tags ghostty -trimpath -o bin/windows/leanterm.exe ./cmd/leanterm
+          go test -c -tags ghostty -o bin/windows/term.test.exe ./internal/gui/term/
+          go test -c -tags ghostty -o bin/windows/termview.test.exe ./internal/gui/termview/
+          go test -c -tags ghostty -o bin/windows/codeedit.test.exe ./internal/gui/codeedit/
+          go test -c -tags ghostty -o bin/windows/fonts.test.exe ./internal/gui/fonts/
+          ls -la bin/windows
+
+      # The main window with a demo configuration: the tree, its context menu,
+      # a local shell, the terminal search; then quitting through the UI thread.
+      - name: Run the main window under a virtual display
+        run: |
+          export DISPLAY=:98 LANG=C.UTF-8
+          Xvfb :98 -screen 0 1280x800x24 & sleep 2
+          cfg=$(mktemp -d); cp build/gio/demo-config/config.toml "$cfg/"
+          SHELL=/bin/bash bin/leanterm -config-dir "$cfg" > leanterm.log 2>&1 & APP=$!
+          sleep 5
+          xwd -root -silent | convert xwd:- screenshot-start.png
+          # Expand "Lab" (second row of the tree), right-click "demo-ssh".
+          xdotool mousemove 28 123 click 1; sleep 1
+          xwd -root -silent | convert xwd:- screenshot-expanded.png
+          xdotool mousemove 90 189; sleep 0.3; xdotool mousedown 3; sleep 0.1; xdotool mouseup 3; sleep 1
+          xwd -root -silent | convert xwd:- screenshot-menu.png
+          xdotool key Escape; sleep 0.5
+          # Local shell from the button bar.
+          xdotool mousemove 372 16; sleep 0.3; xdotool mousedown 1; sleep 0.1; xdotool mouseup 1; sleep 3
+          xdotool mousemove 800 400 click 1; sleep 0.5
+          xdotool type --delay 15 'echo shell-$((6*7))'; xdotool key Return; sleep 1
+          xwd -root -silent | convert xwd:- screenshot-shell.png
+          # CJK and emoji from the fallback fonts, a mouse selection and
+          # the find bar (Ctrl+Shift+F, search as you type).
+          xdotool type --delay 15 'printf "find me: \xe6\x97\xa5\xe6\x9c\xac \xf0\x9f\x98\x80\n"'; xdotool key Return; sleep 1
+          xdotool mousemove 274 75; sleep 0.2; xdotool mousedown 1; sleep 0.1; xdotool mousemove 330 75; sleep 0.1; xdotool mouseup 1; sleep 0.3
+          xdotool key ctrl+shift+f; sleep 0.5; xdotool type --delay 30 'find'; sleep 0.5
+          xwd -root -silent | convert xwd:- screenshot-terminal.png
+          xdotool key Escape; sleep 0.3
+          kill -0 $APP
+          kill $APP
+          cat leanterm.log
+          # -quit-after exits cleanly through the UI thread.
+          timeout 30 bin/leanterm -config-dir "$cfg" -quit-after 4s
+          # LeanEdit on its own: open a file, type, save, search, quit.
+          ed=$(mktemp -d); cp internal/gui/codeedit/editor.go "$ed/sample.go"
+          bin/leanterm -leanedit -config-dir "$cfg" "$ed/sample.go" > leanedit.log 2>&1 & ED=$!
+          sleep 4
+          xdotool mousemove 300 96 click 1; xdotool key End; xdotool type --delay 15 ' // ci'
+          xdotool key ctrl+s; sleep 1
+          head -1 "$ed/sample.go" | grep -q 'package codeedit // ci'
+          xdotool key ctrl+f; sleep 0.3; xdotool type --delay 15 'gioui'; xdotool key Return; sleep 0.5
+          xwd -root -silent | convert xwd:- screenshot-leanedit.png
+          xdotool key Escape; sleep 0.3; xdotool key ctrl+q; sleep 2
+          if kill -0 $ED 2>/dev/null; then cat leanedit.log; echo "LeanEdit did not quit"; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leanterm-linux
+          path: |
+            bin/leanterm
+            screenshot-*.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leanterm-windows-build
+          path: bin/windows/
+
+  windows:
+    needs: linux
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Native, without cgo: vt engine, ConPTY shells (x/xpty), widgets.
+      - name: Tests (vt engine, pure Go)
+        run: |
+          go vet ./...
+          go test ./...
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: leanterm-windows-build
+          path: bin
+
+      # The test binaries cross-compiled with libghostty-vt, run in their
+      # package folders.
+      - name: Tests (both engines, cross-compiled)
+        run: |
+          (cd internal/gui/term && ../../../bin/term.test.exe -test.v | tee ../../../term-tests.txt)
+          grep -q -- '--- PASS: TestKeys/ghostty' term-tests.txt
+          (cd internal/gui/termview && ../../../bin/termview.test.exe)
+          (cd internal/gui/codeedit && ../../../bin/codeedit.test.exe)
+          (cd internal/gui/fonts && ../../../bin/fonts.test.exe)
+
+      - name: Start and quit the main window
+        shell: pwsh
+        run: |
+          $cfg = New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\cfg"
+          Copy-Item build\gio\demo-config\config.toml $cfg
+          $p = Start-Process -FilePath bin\leanterm.exe -ArgumentList '-config-dir', "$cfg", '-quit-after', '10s' `
+            -RedirectStandardError leanterm.log -RedirectStandardOutput leanterm.out -PassThru
+          Start-Sleep -Seconds 6
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD\screenshot-windows.png")
+          $done = $p.WaitForExit(40000)
+          Get-Content leanterm.log
+          if (-not $done) { Stop-Process -Id $p.Id -Force; throw 'the main window did not quit' }
+          if ($p.ExitCode -ne 0) { throw "exit code $($p.ExitCode)" }
+          if (-not (Select-String -Path leanterm.log -Pattern 'file drop enabled')) { throw 'file drop was not enabled' }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: leanterm-windows
+          path: |
+            bin/leanterm.exe
+            screenshot-windows.png
+            leanterm.log

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Builds the generic Linux archive used by install.sh on distributions without
+# .deb packages (Fedora, openSUSE, Arch, ...): binary, the leanedit launcher,
+# desktop entries (LeanTerm and LeanEdit), icons.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+VERSION="${1:-$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")}"
+ARCH="amd64"
+NAME="leanterm_${VERSION}_linux_${ARCH}"
+
+cd "$ROOT_DIR"
+# The Gio GUI with the libghostty engine: build libghostty first
+# (build/gio/build-libghostty.sh) and set PKG_CONFIG_PATH to its prefix.
+# LEANTERM_TAGS= builds without libghostty (the vt engine only).
+TAGS="${LEANTERM_TAGS-ghostty}"
+echo "Building LeanTerm binary..."
+go build ${TAGS:+-tags "$TAGS"} -trimpath -ldflags="-s -w" -o "$ROOT_DIR/bin/leanterm" ./cmd/leanterm
+
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+DIR="$STAGE/$NAME"
+mkdir -p "$DIR/icons"
+
+install -m 0755 "$ROOT_DIR/bin/leanterm" "$DIR/leanterm"
+install -m 0755 "$ROOT_DIR/build/linux/leanedit" "$DIR/leanedit"
+for size in 16 24 32 48 64 128 256 512; do
+    install -m 0644 "$ROOT_DIR/build/linux/icons/leanterm-${size}.png" "$DIR/icons/leanterm-${size}.png"
+    install -m 0644 "$ROOT_DIR/build/linux/icons/leanedit-${size}.png" "$DIR/icons/leanedit-${size}.png"
+done
+install -m 0644 "$ROOT_DIR/LeanTerm_Icon.svg" "$DIR/icons/leanterm.svg"
+install -m 0644 "$ROOT_DIR/LeanEdit_Icon.svg" "$DIR/icons/leanedit.svg"
+install -m 0644 "$ROOT_DIR/LICENSE" "$DIR/LICENSE"
+
+# Same entry as in the .deb package; install.sh sets the absolute Exec path.
+cat <<EOF > "$DIR/org.leanterm.LeanTerm.desktop"
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=LeanTerm
+GenericName=Connection Manager
+Comment=LeanTerm Connection Manager (SSH, Telnet, SFTP)
+Exec=leanterm %u
+Icon=leanterm
+Terminal=false
+Categories=Network;Utility;
+StartupWMClass=org.leanterm.LeanTerm
+Keywords=ssh;telnet;sftp;terminal;connection;
+EOF
+chmod 0644 "$DIR/org.leanterm.LeanTerm.desktop"
+# LeanEdit, the text editor on its own (its Exec is leanedit); install.sh sets the absolute path.
+install -m 0644 "$ROOT_DIR/build/linux/org.leanterm.LeanEdit.desktop" "$DIR/org.leanterm.LeanEdit.desktop"
+
+mkdir -p "$ROOT_DIR/bin"
+tar -C "$STAGE" --owner=0 --group=0 -czf "$ROOT_DIR/bin/$NAME.tar.gz" "$NAME"
+
+echo "Linux archive ready: $ROOT_DIR/bin/$NAME.tar.gz"
