@@ -73,6 +73,17 @@ type uiState struct {
 	qbtns []widget.Clickable
 
 	keysTag int
+
+	// swallowMenu / swallowSB: the title or status bar button whose press
+	// closed its own menu (-1: none); the click that press ends is ignored.
+	swallowMenu, swallowSB int
+	popupBtn               int // the status bar button that opened the popup
+}
+
+// restoreFocus gives the keyboard back to the document after a menu closed,
+// unless a panel of the window has it.
+func (u *uiState) restoreFocus() {
+	u.focusEditor = true
 }
 
 // item is a menu entry.
@@ -127,7 +138,7 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 	u := &a.ui_
 	u.th = th
 	if u.tabClick == nil {
-		u.menuOpen = -1
+		u.menuOpen, u.swallowMenu, u.swallowSB, u.popupBtn = -1, -1, -1, -1
 		u.tabClick, u.tabClose, u.tabHover, u.tabMid = map[int]*widget.Clickable{}, map[int]*widget.Clickable{}, map[int]*gtk.Hover{}, map[int]*int{}
 	}
 	if !a.ready {
@@ -136,6 +147,7 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 		a.TakePending()
 	}
 	a.drain()
+	a.readPointer(gtx)
 	a.shortcuts(gtx)
 	a.handleMenus(gtx)
 	pal := th.Pal
@@ -158,10 +170,23 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 	if u.menuOpen >= 0 {
 		u.menu.Layout(gtx, th)
 		if !u.menu.Opened() {
+			// A press on the open menu's own title closed it: the click it
+			// ends must not open it again.
+			if u.menu.Dismissed() && u.menuOpen < len(u.menuBtns) && u.menuBtns[u.menuOpen].Pressed() {
+				u.swallowMenu = u.menuOpen
+			}
 			u.menuOpen = -1
+			u.restoreFocus()
 		}
 	}
+	popupWas := u.popup.Opened()
 	u.popup.Layout(gtx, th)
+	if popupWas && !u.popup.Opened() {
+		if u.popup.Dismissed() && u.popupBtn >= 0 && u.sb[u.popupBtn].Pressed() {
+			u.swallowSB = u.popupBtn
+		}
+		u.restoreFocus()
+	}
 	if a.quick.open {
 		a.quickOpenLayout(gtx, th)
 	}
@@ -184,8 +209,17 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 }
 
 // trackPointer follows the pointer over the whole window without taking
-// events from anything (popups open where it is).
+// events from anything (popups open where it is). readPointer runs first in
+// the frame, so a click handled during the layout sees where it happened.
 func (a *App) trackPointer(gtx layout.Context) {
+	u := &a.ui_
+	a.readPointer(gtx)
+	defer pointer.PassOp{}.Push(gtx.Ops).Pop()
+	defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+	event.Op(gtx.Ops, &u.pointer)
+}
+
+func (a *App) readPointer(gtx layout.Context) {
 	u := &a.ui_
 	for {
 		ev, ok := gtx.Event(pointer.Filter{Target: &u.pointer, Kinds: pointer.Move | pointer.Press | pointer.Drag})
@@ -196,9 +230,6 @@ func (a *App) trackPointer(gtx layout.Context) {
 			u.pointer = e.Position.Round()
 		}
 	}
-	defer pointer.PassOp{}.Push(gtx.Ops).Pop()
-	defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-	event.Op(gtx.Ops, &u.pointer)
 }
 
 // ---- menu bar ------------------------------------------------------
@@ -209,15 +240,27 @@ func (a *App) handleMenus(gtx layout.Context) {
 	// from is remembered in menuShown.
 	if id, ok := u.menu.Activated(); ok && u.menuShown >= 0 && u.menuShown < len(u.menuDefs) {
 		if it := findItem(u.menuDefs[u.menuShown].items, id); it != nil && it.action != nil && !it.disabled {
-			it.action(gtx)
+			a.menuAction(gtx, it.action)
 		}
 		u.menuOpen = -1
 	}
 	if id, ok := u.popup.Activated(); ok {
 		if it := findItem(u.popupDefs, id); it != nil && it.action != nil && !it.disabled {
-			it.action(gtx)
+			a.menuAction(gtx, it.action)
 		}
 	}
+}
+
+// menuAction runs a menu item's action; the document gets the keyboard back
+// unless the action opened a panel that takes it.
+func (a *App) menuAction(gtx layout.Context, action func(gtx layout.Context)) {
+	searchWas, gotoWas := a.search.open, a.gotoLn.open
+	action(gtx)
+	if (a.search.open && !searchWas) || (a.gotoLn.open && !gotoWas) {
+		a.ui_.focusEditor = false
+		return
+	}
+	a.ui_.focusEditor = true
 }
 
 func (a *App) menuBar(gtx layout.Context) layout.Dimensions {
@@ -269,7 +312,11 @@ func (a *App) menuButton(gtx layout.Context, i int) layout.Dimensions {
 		// The menu opens below the button (window coordinates of the bar).
 		u.menu.Open(image.Pt(gtx.Dp(4)+menuLeft(u, i, gtx), u.barH))
 	}
-	if c.Clicked(gtx) {
+	clicked := c.Clicked(gtx)
+	if u.swallowMenu == i && (clicked || !c.Pressed()) {
+		u.swallowMenu, clicked = -1, false
+	}
+	if clicked {
 		switch {
 		case def.action != nil:
 			u.menuOpen = -1
@@ -649,7 +696,12 @@ func (a *App) statusBar(gtx layout.Context) layout.Dimensions {
 	button := func(i int, s string, c color.NRGBA, onClick func(gtx layout.Context)) layout.Widget {
 		return func(gtx layout.Context) layout.Dimensions {
 			b := &u.sb[i]
-			if b.Clicked(gtx) && onClick != nil {
+			clicked := b.Clicked(gtx)
+			if u.swallowSB == i && (clicked || !b.Pressed()) {
+				u.swallowSB, clicked = -1, false
+			}
+			if clicked && onClick != nil {
+				u.popupBtn = i
 				onClick(gtx)
 			}
 			return b.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -742,7 +794,8 @@ func (a *App) openPopup(items []item) {
 	u := &a.ui_
 	u.popupDefs = items
 	u.popup.Items = toGtk(items, "")
-	u.popup.Open(u.pointer)
+	// Above the status bar, from where it was clicked (as KDE's do).
+	u.popup.OpenUp(u.pointer)
 }
 
 // ---- questions -------------------------------------------------------------------------------

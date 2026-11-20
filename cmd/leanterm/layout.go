@@ -123,7 +123,14 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 			return u.treeMenu.Layout(gtx, u.th)
 		}),
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-			return u.termMenu.Layout(gtx, u.th)
+			was := u.termMenu.Opened()
+			d := u.termMenu.Layout(gtx, u.th)
+			// Closed with Escape: the keyboard goes back to the terminal (a
+			// press elsewhere gives it to what was pressed).
+			if was && !u.termMenu.Opened() && !u.termMenu.Dismissed() {
+				u.focus = true
+			}
+			return d
 		}),
 		layout.Expanded(u.fileOverlays),
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions { return u.editConn.Layout(gtx, u.th) }),

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"slices"
 
 	"gioui.org/font"
 	"gioui.org/layout"
@@ -13,6 +14,7 @@ import (
 	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
 )
 
 // ---- helpers ---------------------------------------------------------------------
@@ -336,13 +338,16 @@ var engines = []struct{ value, name, detail string }{
 	{"vt", "VT", "pure Go (x/vt)"},
 }
 
+// engineSelected reports whether the card of engine v shows the setting cur,
+// as the terminals see it: an engine this build lacks falls back to the
+// default (term.Normalize).
 func engineSelected(cur, v string) bool {
-	switch v {
-	case "vt":
-		return cur == "vt" || cur == "rio"
-	default:
-		return cur != "vt" && cur != "rio"
-	}
+	return term.Normalize(cur) == v
+}
+
+// engineAvailable reports whether this build includes the engine.
+func engineAvailable(v string) bool {
+	return slices.Contains(term.Available(), term.Normalize(v)) && term.Normalize(v) == v
 }
 
 func (d *Dialog) terminalPage(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
@@ -369,10 +374,15 @@ func (d *Dialog) engineChoice(th *gtk.Theme) layout.Widget {
 		e := e
 		kids = append(kids, form.Grow{W: func(gtx layout.Context) layout.Dimensions {
 			c := d.F.Clicked("engine:" + e.value)
-			if c.Clicked(gtx) {
+			avail := engineAvailable(e.value)
+			if c.Clicked(gtx) && avail {
 				t.Engine = e.value
 			}
 			sel := engineSelected(t.Engine, e.value)
+			detail := e.detail
+			if !avail {
+				detail = "not included in this build"
+			}
 			pal := th.Pal
 			return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min.X = gtx.Constraints.Max.X
@@ -382,7 +392,7 @@ func (d *Dialog) engineChoice(th *gtk.Theme) layout.Widget {
 					return layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,
 						layout.Rigid(gtk.Text{S: e.name, Size: gtk.Em(1.25), Weight: font.Bold, Color: pal.FgColor}.Widget(th)),
 						layout.Rigid(layout.Spacer{Height: 2}.Layout),
-						layout.Rigid(gtk.Text{S: e.detail, Size: gtk.Em(0.85), Color: pal.MutedFg}.Widget(th)),
+						layout.Rigid(gtk.Text{S: detail, Size: gtk.Em(0.85), Color: pal.MutedFg}.Widget(th)),
 					)
 				})
 				call := m.Stop()
