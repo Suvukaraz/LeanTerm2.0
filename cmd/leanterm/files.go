@@ -49,8 +49,7 @@ func (u *ui) filePanel(t *tab) *filebrowser.Panel {
 			}
 			go func() {
 				if err := u.editorSvc.Open(f); err != nil {
-					u.dropMsg = "Could not open '" + path.Base(p) + "' in the editor:\n" + err.Error()
-					u.w.Invalidate()
+					u.postNotice("Could not open '" + path.Base(p) + "' in the editor:\n" + err.Error())
 				}
 			}()
 		},

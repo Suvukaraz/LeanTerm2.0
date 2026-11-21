@@ -34,22 +34,8 @@ install -m 0644 "$ROOT_DIR/LeanTerm_Icon.svg" "$DIR/icons/leanterm.svg"
 install -m 0644 "$ROOT_DIR/LeanEdit_Icon.svg" "$DIR/icons/leanedit.svg"
 install -m 0644 "$ROOT_DIR/LICENSE" "$DIR/LICENSE"
 
-# Same entry as in the .deb package; install.sh sets the absolute Exec path.
-cat <<EOF > "$DIR/org.leanterm.LeanTerm.desktop"
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=LeanTerm
-GenericName=Connection Manager
-Comment=LeanTerm Connection Manager (SSH, Telnet, SFTP)
-Exec=leanterm %u
-Icon=leanterm
-Terminal=false
-Categories=Network;Utility;
-StartupWMClass=org.leanterm.LeanTerm
-Keywords=ssh;telnet;sftp;terminal;connection;
-EOF
-chmod 0644 "$DIR/org.leanterm.LeanTerm.desktop"
+# The same entries as in the .deb package; install.sh sets the absolute Exec paths.
+install -m 0644 "$ROOT_DIR/build/linux/org.leanterm.LeanTerm.desktop" "$DIR/org.leanterm.LeanTerm.desktop"
 # LeanEdit, the text editor on its own (its Exec is leanedit); install.sh sets the absolute path.
 install -m 0644 "$ROOT_DIR/build/linux/org.leanterm.LeanEdit.desktop" "$DIR/org.leanterm.LeanEdit.desktop"
 

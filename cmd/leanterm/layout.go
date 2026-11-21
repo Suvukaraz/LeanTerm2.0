@@ -603,11 +603,20 @@ func (u *ui) openDropped(paths []string) {
 				continue
 			}
 			if err := u.editorSvc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
-				u.dropMsg = err.Error()
-				u.w.Invalidate()
+				u.postNotice(err.Error())
 			}
 		}
 	}()
+}
+
+// postNotice shows msg in the status line; it may be called from any
+// goroutine (the message is set on the UI goroutine).
+func (u *ui) postNotice(msg string) {
+	select {
+	case u.filesEvents <- func() { u.dropMsg = msg }:
+	default: // the UI is busy with many events; the message is dropped
+	}
+	u.w.Invalidate()
 }
 
 func (u *ui) onDrop(d dnd.Drop) {

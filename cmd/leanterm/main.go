@@ -138,6 +138,9 @@ func main() {
 	core.Bus.On(events.SessionClosed, func(_ string, data any) {
 		if m, ok := data.(map[string]any); ok {
 			if id, ok := m["tmpID"].(string); ok {
+				// Its SFTP channel ends with it (the browser and the editor
+				// open a new one for a new session).
+				_ = sftpMgr.CloseForSession(id)
 				u.closed <- id
 				w.Invalidate()
 			}

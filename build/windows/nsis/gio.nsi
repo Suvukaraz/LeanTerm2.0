@@ -3,7 +3,7 @@ Unicode true
 ####
 ## Installer of LeanTerm (cmd/leanterm) for Windows, amd64.
 ## build/package-windows.sh calls it with:
-##   makensis -DINFO_PRODUCTVERSION=2.0.0 -DARG_BINARY=leanterm.exe -DOUTFILE=setup.exe gio.nsi
+##   makensis -DINFO_PRODUCTVERSION=2.0.0 -DARG_BINARY=leanterm.exe -DARG_LEANEDIT=leanedit.exe -DOUTFILE=setup.exe gio.nsi
 ## The installer is per machine (Program Files, administrator rights). The
 ## uninstall key keeps its name, so an update replaces an installed version.
 ####
@@ -13,6 +13,9 @@ Unicode true
 !endif
 !ifndef ARG_BINARY
     !error "ARG_BINARY must name the leanterm.exe to install"
+!endif
+!ifndef ARG_LEANEDIT
+    !error "ARG_LEANEDIT must name the leanedit.exe to install"
 !endif
 !ifndef OUTFILE
     !define OUTFILE "..\..\..\bin\leanterm_setup.exe"
@@ -24,9 +27,15 @@ Unicode true
 !define PRODUCT_EXECUTABLE "leanterm.exe"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 
-# LeanEdit: LeanTerm's text editor on its own (leanterm.exe -leanedit).
+# LeanEdit: LeanTerm's text editor on its own, with an executable of its own
+# (icon, name in "Open with" and the taskbar).
+!define LEANEDIT_EXECUTABLE "leanedit.exe"
 !define LEANEDIT_PROGID "LeanTerm.LeanEdit"
-!define LEANEDIT_CMD '"$INSTDIR\${PRODUCT_EXECUTABLE}" -leanedit'
+!define LEANEDIT_CMD '"$INSTDIR\${LEANEDIT_EXECUTABLE}"'
+# The AppUserModelIDs of the windows (see internal/gui/winsys): shortcuts
+# carry them too, so a pinned shortcut and its windows share a button.
+!define LEANTERM_APPID "org.leanterm.LeanTerm"
+!define LEANEDIT_APPID "org.leanterm.LeanEdit"
 
 RequestExecutionLevel admin
 
@@ -90,6 +99,7 @@ Section "LeanTerm" SecLeanTerm
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${LEANTERM_APPID} "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$DESKTOP\${INFO_PRODUCTNAME}.lnk"'
 
     WriteUninstaller "$INSTDIR\uninstall.exe"
     WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
@@ -150,19 +160,30 @@ SectionEnd
 Section "LeanEdit (text editor)" SecLeanEdit
     SetShellVarContext all
 
-    CreateShortcut "$SMPROGRAMS\LeanEdit.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}" "-leanedit" "$INSTDIR\leanedit.ico" 0 "" "" "LeanEdit text editor"
-    CreateShortcut "$DESKTOP\LeanEdit.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}" "-leanedit" "$INSTDIR\leanedit.ico" 0 "" "" "LeanEdit text editor"
+    SetOutPath $INSTDIR
+    File "/oname=${LEANEDIT_EXECUTABLE}" "${ARG_LEANEDIT}"
+
+    CreateShortcut "$SMPROGRAMS\LeanEdit.lnk" "$INSTDIR\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}" 0 "" "" "LeanEdit text editor"
+    CreateShortcut "$DESKTOP\LeanEdit.lnk" "$INSTDIR\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}" 0 "" "" "LeanEdit text editor"
+    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${LEANEDIT_APPID} "$SMPROGRAMS\LeanEdit.lnk" "$DESKTOP\LeanEdit.lnk"'
 
     # ProgID used by "Open with": name and icon of LeanEdit, opens the file in it.
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "" "Text Document (LeanEdit)"
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "FriendlyTypeName" "Text Document (LeanEdit)"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\DefaultIcon" "" "$INSTDIR\leanedit.ico"
+    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "AppUserModelID" "${LEANEDIT_APPID}"
+    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\DefaultIcon" "" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationName" "LeanEdit"
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationDescription" "LeanEdit text editor (LeanTerm)"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationIcon" "$INSTDIR\leanedit.ico"
+    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationIcon" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
+    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "AppUserModelID" "${LEANEDIT_APPID}"
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\shell\open" "FriendlyAppName" "LeanEdit"
     WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\shell\open\command" "" '${LEANEDIT_CMD} "%1"'
     !insertmacro leanedit.forEachExtension leanedit.openWith
+    # The application itself, for "Open with" → "Choose another app".
+    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}" "FriendlyAppName" "LeanEdit"
+    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}\DefaultIcon" "" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
+    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}\shell\open\command" "" '${LEANEDIT_CMD} "%1"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}"
     # Any other file Windows considers text (perceived type "text").
     WriteRegStr HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${LEANEDIT_PROGID}" ""
 
@@ -187,6 +208,8 @@ Section "un.Uninstall"
     !insertmacro leanedit.forEachExtension leanedit.removeOpenWith
     DeleteRegValue HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${LEANEDIT_PROGID}"
     DeleteRegKey HKLM "Software\Classes\${LEANEDIT_PROGID}"
+    DeleteRegKey HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${LEANEDIT_EXECUTABLE}"
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 
     RMDir /r $INSTDIR

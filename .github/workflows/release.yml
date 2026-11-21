@@ -21,13 +21,13 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -66,7 +66,7 @@ jobs:
           chmod +x "$HOME/bin/zig"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         if: steps.check.outputs.skip != 'true'
         id: ghostty-cache
         with:
@@ -81,7 +81,7 @@ jobs:
           test -f "$RUNNER_TEMP/ghostty/windows/lib/pkgconfig/libghostty-vt-static.pc" ||
             GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-windows-gnu "$RUNNER_TEMP/ghostty/windows"
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: steps.check.outputs.skip != 'true' && steps.ghostty-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ runner.temp }}/ghostty

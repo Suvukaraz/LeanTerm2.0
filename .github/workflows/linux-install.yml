@@ -21,13 +21,13 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -50,7 +50,7 @@ jobs:
           chmod +x "$HOME/bin/zig"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: ghostty-cache
         with:
           path: ${{ runner.temp }}/ghostty
@@ -62,7 +62,7 @@ jobs:
           test -f "$RUNNER_TEMP/ghostty/linux/lib/pkgconfig/libghostty-vt-static.pc" ||
             GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-linux-gnu.2.34 "$RUNNER_TEMP/ghostty/linux"
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: steps.ghostty-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ runner.temp }}/ghostty
@@ -80,7 +80,7 @@ jobs:
           # The binary must not need a newer glibc than 2.34.
           objdump -T bin/leanterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-packages
           path: dist/
@@ -109,7 +109,7 @@ jobs:
       - name: Prepare
         run: ${{ matrix.prep }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux-packages
           path: dist

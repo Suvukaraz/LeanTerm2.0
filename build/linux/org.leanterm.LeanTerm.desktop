@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=LeanTerm
+GenericName=Connection Manager
+Comment=SSH, Telnet and SFTP connection manager
+Exec=leanterm
+Icon=leanterm
+Terminal=false
+Categories=Network;RemoteAccess;
+StartupWMClass=org.leanterm.LeanTerm
+StartupNotify=true
+Keywords=ssh;telnet;sftp;terminal;connection;
