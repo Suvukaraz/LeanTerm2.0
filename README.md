@@ -14,12 +14,6 @@
   <a href="https://github.com/Suvukaraz/LeanTerm2.0/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Suvukaraz/LeanTerm2.0/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/screenshot_01.png" alt="LeanTerm with connections, SFTP browser and remote terminal (Ghostty)" width="920">
-  <br>
-  <em>LeanTerm with connections, SFTP browser and remote terminal (Ghostty)</em>
-</p>
-
 LeanTerm is written in Go with the [Gio](https://gioui.org) GUI toolkit. It keeps your saved connections in an organized tree, opens SSH, Telnet and local shells in tabs or split panes, browses remote (SFTP) or local files side-by-side with the terminal, and edits remote or local files directly in its built-in code editor, LeanEdit.
 
 ---
