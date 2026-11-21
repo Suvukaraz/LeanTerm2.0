@@ -628,3 +628,33 @@ func TestMenuOutsideClickReachesWidgetBelow(t *testing.T) {
 		t.Fatal("the click did not reach the button below")
 	}
 }
+
+// The keyboard keeps the row it moved to while the pointer rests on another
+// row (it moves the focus only when it enters a row).
+func TestMenuKeyboardWhilePointerRests(t *testing.T) {
+	u := newUI(t)
+	m := Menu{Items: []MenuItem{
+		{ID: "a", Label: "Connect"},
+		{ID: "b", Label: "Edit"},
+		{ID: "c", Label: "Delete"},
+	}}
+	w := func(gtx layout.Context) layout.Dimensions { return m.Layout(gtx, u.th) }
+	m.Open(image.Pt(10, 10))
+	u.frame(w)
+	u.pointer(pointer.Move, 60, float32(10+m.rowTop[0]+6), 0)
+	u.frame(w)
+	if m.focus != 0 {
+		t.Fatalf("hover: focus %d, want 0", m.focus)
+	}
+	u.keys(w, key.NameDownArrow)
+	u.frame(w)
+	u.frame(w)
+	if m.focus != 1 {
+		t.Fatalf("after Down with the pointer resting on row 0: focus %d, want 1", m.focus)
+	}
+	u.keys(w, key.NameReturn)
+	u.frame(w)
+	if id, ok := m.Activated(); !ok || id != "b" {
+		t.Fatalf("Return activated %q, %v; want b", id, ok)
+	}
+}

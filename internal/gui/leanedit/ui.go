@@ -70,13 +70,9 @@ type uiState struct {
 	newB, openB widget.Clickable
 	sb          [6]widget.Clickable
 
-	titleW   map[int]int // menu title widths
-	barH     int         // menu bar height
-	toolH    int         // tool bar height
-	tabH     int         // tab bar height
-	sbH      int         // status bar height
-	tabSizes map[int]int // tab widths
-	pointer  image.Point // last pointer position (popups open there)
+	titleW  map[int]int // menu title widths
+	barH    int         // menu bar height
+	pointer image.Point // last pointer position (popups open there)
 
 	qdlg  gtk.Dialog
 	qbtns []widget.Clickable
@@ -166,18 +162,11 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 		layout.Rigid(a.menuBar),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if !a.toolbar {
-				u.toolH = 0
 				return layout.Dimensions{}
 			}
 			return a.toolBar(gtx)
 		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			if len(a.tabs) == 0 {
-				u.tabH = 0
-				return layout.Dimensions{}
-			}
-			return a.tabBar(gtx)
-		}),
+		layout.Rigid(a.tabBar),
 		layout.Flexed(1, a.body),
 		layout.Rigid(a.statusBar),
 	)
@@ -250,72 +239,8 @@ func (a *App) readPointer(gtx layout.Context) {
 		}
 		if e, ok := ev.(pointer.Event); ok {
 			u.pointer = e.Position.Round()
-			if e.Kind == pointer.Press && e.Buttons.Contain(pointer.ButtonSecondary) {
-				a.handleRightClick(gtx, u.pointer)
-			}
 		}
 	}
-}
-
-func (a *App) handleRightClick(gtx layout.Context, pos image.Point) {
-	u := &a.ui_
-	tabTop := u.barH + u.toolH
-	tabBot := tabTop + u.tabH
-	editorBot := gtx.Constraints.Max.Y - u.sbH
-	if editorBot <= 0 {
-		editorBot = 640 - 24
-	}
-
-	switch {
-	case len(a.tabs) > 0 && pos.Y >= tabTop && pos.Y < tabBot:
-		tab := a.tabAt(pos.X)
-		if tab != nil {
-			a.activate(tab.ID)
-			a.openContextMenu(pos, a.tabContextMenuItems(tab))
-		} else {
-			a.openContextMenu(pos, a.tabBarContextMenuItems())
-		}
-	case pos.Y >= tabBot && pos.Y < editorBot:
-		t := a.Active()
-		if t != nil && t.ready {
-			gtx.Execute(key.FocusCmd{Tag: t.ed})
-			if t.ed.SelectedText() == "" {
-				editorTop := tabBot
-				if a.search.open {
-					editorTop += gtx.Dp(36)
-				}
-				if a.gotoLn.open {
-					editorTop += gtx.Dp(36)
-				}
-				textY := pos.Y - editorTop
-				textX := pos.X - t.ed.GutterWidth()
-				if textX >= 0 && textY >= 0 {
-					t.ed.TextView().MoveCoord(image.Pt(textX, textY))
-				}
-			}
-			a.openContextMenu(pos, a.editorContextMenuItems(t))
-		} else if len(a.tabs) == 0 && a.ready {
-			a.openContextMenu(pos, a.placeholderContextMenuItems())
-		}
-	case len(a.tabs) == 0 && a.ready && pos.Y >= u.barH+u.toolH && pos.Y < editorBot:
-		a.openContextMenu(pos, a.placeholderContextMenuItems())
-	}
-}
-
-func (a *App) tabAt(x int) *Tab {
-	u := &a.ui_
-	curX := 0
-	for _, t := range a.tabs {
-		w := u.tabSizes[t.ID]
-		if w <= 0 {
-			w = 100
-		}
-		if x >= curX && x < curX+w {
-			return t
-		}
-		curX += w
-	}
-	return nil
 }
 
 // ---- menu bar ------------------------------------------------------
@@ -520,7 +445,6 @@ func (a *App) toolBar(gtx layout.Context) layout.Dimensions {
 	gtk.FillRect(gtx, image.Rectangle{Max: d.Size}, pal.BgColor)
 	gtk.FillRect(gtx, image.Rect(0, d.Size.Y-gtx.Dp(1), d.Size.X, d.Size.Y), pal.BorderColor)
 	call.Add(gtx.Ops)
-	u.toolH = d.Size.Y
 	return d
 }
 
@@ -534,6 +458,7 @@ func (a *App) tabBar(gtx layout.Context) layout.Dimensions {
 	th := u.th
 	pal := th.Pal
 	// Clicks first (the list may change).
+	tabMenu := false // a tab took a right click
 	for _, t := range append([]*Tab(nil), a.tabs...) {
 		id := t.ID
 		if c := u.tabClose[id]; c != nil && c.Clicked(gtx) {
@@ -550,10 +475,29 @@ func (a *App) tabBar(gtx layout.Context) layout.Dimensions {
 				if !ok {
 					break
 				}
-				if e, ok := ev.(pointer.Event); ok && e.Buttons.Contain(pointer.ButtonTertiary) {
+				e, ok := ev.(pointer.Event)
+				switch {
+				case !ok:
+				case e.Buttons.Contain(pointer.ButtonTertiary):
 					a.flow(func() { a.closeTab(id) })
+				case e.Buttons.Contain(pointer.ButtonSecondary):
+					// The tab under the pointer, wherever the bar is scrolled.
+					a.activate(id)
+					a.openContextMenu(u.pointer, a.tabContextMenuItems(a.tab(id)))
+					tabMenu = true
 				}
 			}
+		}
+	}
+	// A right click on the bar beside the tabs (the bar's area gets the
+	// presses on the tabs as well).
+	for {
+		ev, ok := gtx.Event(pointer.Filter{Target: &u.tabBarTag, Kinds: pointer.Press})
+		if !ok {
+			break
+		}
+		if e, ok := ev.(pointer.Event); ok && e.Buttons.Contain(pointer.ButtonSecondary) && !tabMenu {
+			a.openContextMenu(u.pointer, a.tabBarContextMenuItems())
 		}
 	}
 	gtx.Constraints.Min.X = gtx.Constraints.Max.X
@@ -567,8 +511,14 @@ func (a *App) tabBar(gtx layout.Context) layout.Dimensions {
 	h := d.Size.Y + gtx.Dp(1)
 	gtk.FillRect(gtx, image.Rect(0, 0, d.Size.X, h), pal.HeaderBg)
 	call.Add(gtx.Ops)
+	// Over the tabs, passing everything on (the list's scroll area covers
+	// the whole bar).
+	pass := pointer.PassOp{}.Push(gtx.Ops)
+	bar := clip.Rect{Max: image.Pt(d.Size.X, h)}.Push(gtx.Ops)
+	event.Op(gtx.Ops, &u.tabBarTag)
+	bar.Pop()
+	pass.Pop()
 	gtk.FillRect(gtx, image.Rect(0, h-gtx.Dp(1), d.Size.X, h), pal.BorderColor)
-	u.tabH = h
 	return layout.Dimensions{Size: image.Pt(d.Size.X, h)}
 }
 
@@ -638,10 +588,6 @@ func (a *App) tabLayout(gtx layout.Context, t *Tab) layout.Dimensions {
 	event.Op(gtx.Ops, mid)
 	area.Pop()
 	pass.Pop()
-	if u.tabSizes == nil {
-		u.tabSizes = map[int]int{}
-	}
-	u.tabSizes[t.ID] = dims.Size.X
 	return dims
 }
 
@@ -754,21 +700,28 @@ func (a *App) body(gtx layout.Context) layout.Dimensions {
 								if t.ed.SelectedText() == "" {
 									textX := int(e.Position.X) - t.ed.GutterWidth()
 									if textX >= 0 {
+										// As a left click does: the caret there,
+										// nothing selected.
 										t.ed.TextView().MoveCoord(image.Pt(textX, int(e.Position.Y)))
+										t.ed.TextView().ClearSelection()
 									}
 								}
 								a.openContextMenu(u.pointer, a.editorContextMenuItems(t))
 							}
 						}
-						defer pointer.PassOp{}.Push(gtx.Ops).Pop()
-						defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-						event.Op(gtx.Ops, &t.bodyTag)
-
 						if t.layout(gtx, sh, th) {
 							t.dirtyAt = gtx.Now
 							a.recordEdit(t)
 							a.markDirty(t)
 						}
+						// Over the editor, passing every event on to it
+						// (only right presses are read here). Scoped, so
+						// the editor's own areas do not pass theirs on.
+						pass := pointer.PassOp{}.Push(gtx.Ops)
+						area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
+						event.Op(gtx.Ops, &t.bodyTag)
+						area.Pop()
+						pass.Pop()
 						return layout.Dimensions{Size: gtx.Constraints.Max}
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -791,9 +744,10 @@ func (a *App) body(gtx layout.Context) layout.Dimensions {
 				a.openContextMenu(u.pointer, a.placeholderContextMenuItems())
 			}
 		}
-		defer pointer.PassOp{}.Push(gtx.Ops).Pop()
-		defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+		// Under the buttons: it gets the presses beside them.
+		area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
 		event.Op(gtx.Ops, &u.bodyTag)
+		area.Pop()
 
 		if u.newB.Clicked(gtx) {
 			a.NewDocument()
@@ -943,7 +897,6 @@ func (a *App) statusBar(gtx layout.Context) layout.Dimensions {
 	gtk.FillRect(gtx, image.Rectangle{Max: d.Size}, pal.HeaderBg)
 	gtk.FillRect(gtx, image.Rect(0, 0, d.Size.X, gtx.Dp(1)), pal.BorderColor)
 	call.Add(gtx.Ops)
-	u.sbH = d.Size.Y
 	return d
 }
 

@@ -152,10 +152,13 @@ func (h *harness) frame() {
 	h.r.Frame(&h.ops)
 }
 
+// press clicks button b at (x, y): a press and its release, as a mouse
+// does (a press alone leaves the button held for the following ones).
 func (h *harness) press(x, y float32, b pointer.Buttons) {
 	t := time.Duration(h.now.UnixNano())
 	h.r.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Position: f32.Pt(x, y), Time: t})
 	h.r.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Position: f32.Pt(x, y), Buttons: b, Time: t})
+	h.r.Queue(pointer.Event{Kind: pointer.Release, Source: pointer.Mouse, Position: f32.Pt(x, y), Time: t})
 	h.frame()
 }
 
@@ -494,5 +497,50 @@ func TestContextMenuInLeanEdit(t *testing.T) {
 	}
 	if !bgFound["New Document"] || !bgFound["Open File…"] {
 		t.Errorf("tab bar bg context menu missing New/Open: %v", bgFound)
+	}
+}
+
+// A right click on a tab targets the tab under the pointer, also when the
+// tab bar is scrolled (many tabs).
+func TestTabContextMenuScrolledTabBar(t *testing.T) {
+	h := newHarness(t, newFake())
+	h.frame()
+	for i := 0; i < 20; i++ {
+		h.a.NewDocument()
+	}
+	h.frame()
+	// Scroll the tab bar: the first visible tab is the sixth.
+	h.a.ui_.tabsList.Position = layout.Position{First: 5}
+	h.frame()
+	h.frame()
+	h.press(30, 76, pointer.ButtonSecondary)
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("tab context menu not opened")
+	}
+	if got, want := h.a.active, h.a.tabs[5].ID; got != want {
+		t.Fatalf("right click activated tab %d, want the visible tab %d (Untitled 6)", got, want)
+	}
+}
+
+// A right click without a selection moves the caret there and selects
+// nothing (it must not select from the old caret to the click).
+func TestEditorRightClickMovesCaretWithoutSelecting(t *testing.T) {
+	h := newHarness(t, newFake())
+	h.frame()
+	h.a.NewDocument()
+	tab := h.a.Active()
+	tab.ed.SetText(strings.Repeat("some text on a line\n", 30))
+	tab.ed.SetCaret(0, 0)
+	h.frame()
+	h.frame()
+	h.press(120, 250, pointer.ButtonSecondary)
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("editor context menu not opened")
+	}
+	if s := tab.ed.SelectedText(); s != "" {
+		t.Fatalf("right click selected %q", s)
+	}
+	if start, _ := tab.ed.Selection(); start == 0 {
+		t.Fatal("right click did not move the caret")
 	}
 }
