@@ -161,13 +161,3 @@ func (u *ui) watchFileEvents() {
 		u.w.Invalidate()
 	})
 }
-
-// dropFiles gives dropped files to the active tab's browser, if shown.
-func (u *ui) dropFiles(paths []string) bool {
-	t := u.activeTab()
-	if t == nil || t.files == nil || !t.sftpOpen {
-		return false
-	}
-	t.files.Drop(paths)
-	return true
-}

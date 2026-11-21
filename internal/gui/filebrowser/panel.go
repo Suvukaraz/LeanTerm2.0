@@ -15,6 +15,7 @@ import (
 	"gioui.org/io/event"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
+	"gioui.org/io/transfer"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -87,11 +88,35 @@ type Panel struct {
 	errMsg string
 	// upload back: a file opened with its application changed.
 	backLocal, backRemote string
+
+	// Drag and drop. hover is over the whole panel (files dragged from the
+	// desktop); hoverDir is the folder row under the pointer in this frame
+	// ("" = none); dropping are files dropped on the window, resolved once
+	// the panel has been laid out; dragging is a drag of rows inside the
+	// panel (Gio's transfer).
+	hover    gtk.Hover
+	hoverOn  bool
+	hoverDir string
+	dropping *queuedDrop
+	dragging bool
+	upArea   int
+	upHover  bool
 }
+
+// queuedDrop are files dropped on the window, for the panel or elsewhere.
+type queuedDrop struct {
+	paths    []string
+	fallback func()
+}
+
+// pathsMime is the type of rows dragged inside the panel: their paths, one
+// per line.
+const pathsMime = "application/x-leanterm-paths"
 
 type rowState struct {
 	click widget.Clickable
 	area  int
+	hover bool // under the pointer while rows are dragged
 }
 
 func (p *Panel) init() {
@@ -130,8 +155,20 @@ func (p *Panel) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 	p.init()
 	st := p.B.Snapshot()
 	p.actions(gtx, st)
+	p.hoverOn = p.hover.Update(gtx)
+	p.hoverDir = ""
 	pal := th.Pal
 	gtk.Fill(gtx, pal.BgColor)
+	defer func() {
+		// Over everything, passing all events on: whether the pointer
+		// (or files dragged from the desktop) is over the panel.
+		area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
+		pass := pointer.PassOp{}.Push(gtx.Ops)
+		p.hover.Add(gtx)
+		pass.Pop()
+		area.Pop()
+		p.resolveDrop(st)
+	}()
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions { return p.header(gtx, th) }),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions { return p.toolbar(gtx, th, st) }),
@@ -468,12 +505,21 @@ func overlay(gtx layout.Context, th *gtk.Theme, size image.Point, s string, sz u
 }
 
 func (p *Panel) rowFrame(gtx layout.Context, th *gtk.Theme, c *widget.Clickable, selected, broken bool, cells [4]layout.Widget) layout.Dimensions {
+	return p.rowFrameDrop(gtx, th, c, selected, broken, false, cells)
+}
+
+// rowFrameDrop is rowFrame; target marks a folder that dragged rows would
+// move into.
+func (p *Panel) rowFrameDrop(gtx layout.Context, th *gtk.Theme, c *widget.Clickable, selected, broken, target bool, cells [4]layout.Widget) layout.Dimensions {
 	pal := th.Pal
 	h := gtx.Dp(22)
 	gtx.Constraints.Min.X = gtx.Constraints.Max.X
 	return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		w := gtx.Constraints.Max.X
 		switch {
+		case target:
+			gtk.FillRect(gtx, image.Rect(0, 0, w, h), pal.RowHover)
+			gtk.Box(gtx, image.Pt(w, h), 2, color.NRGBA{}, pal.Accent)
 		case selected:
 			gtk.FillRect(gtx, image.Rect(0, 0, w, h), pal.SelectedBg)
 		case c.Hovered():
@@ -529,11 +575,112 @@ func (p *Panel) parentRow(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 			p.B.Up()
 		}
 	}
+	st := p.B.Snapshot()
+	parent, _ := ParentPath(st.Current, st.Win)
+	// Rows dropped on ".." move into the parent folder.
+	p.upHover = p.dragEvents(gtx, &p.upArea, nil, parent, p.upHover, st)
+	if p.up.Hovered() {
+		p.hoverDir = parent
+	}
 	fg := th.Pal.FgColor
 	none := func(gtx layout.Context) layout.Dimensions { return layout.Dimensions{} }
-	return p.rowFrame(gtx, th, &p.up, false, false, [4]layout.Widget{
+	d := p.rowFrameDrop(gtx, th, &p.up, false, false, p.dragging && p.upHover, [4]layout.Widget{
 		p.nameCell(th, sftpsvc.FileEntry{Name: "..", IsDir: true}, fg), none, none, none,
 	})
+	a := clip.Rect{Max: d.Size}.Push(gtx.Ops)
+	pass := pointer.PassOp{}.Push(gtx.Ops)
+	event.Op(gtx.Ops, &p.upArea)
+	pass.Pop()
+	a.Pop()
+	return d
+}
+
+// dragEvents handles a row's part in dragging rows: the source of a drag
+// (offering paths, nil for none) and, for a folder (dir != ""), a target
+// moving the dropped rows into dir. It returns whether the pointer is over
+// the row during a drag.
+func (p *Panel) dragEvents(gtx layout.Context, tag event.Tag, offer []string, dir string, hover bool, st State) bool {
+	filters := []event.Filter{pointer.Filter{Target: tag, Kinds: pointer.Enter | pointer.Leave | pointer.Cancel}}
+	if offer != nil {
+		filters = append(filters, transfer.SourceFilter{Target: tag, Type: pathsMime})
+	}
+	if dir != "" {
+		filters = append(filters, transfer.TargetFilter{Target: tag, Type: pathsMime})
+	}
+	for {
+		ev, ok := gtx.Event(filters...)
+		if !ok {
+			break
+		}
+		switch e := ev.(type) {
+		case pointer.Event:
+			hover = e.Kind == pointer.Enter
+		case transfer.InitiateEvent:
+			p.dragging = true
+		case transfer.CancelEvent:
+			p.dragging, hover = false, false
+		case transfer.RequestEvent:
+			gtx.Execute(transfer.OfferCmd{Tag: tag, Type: e.Type, Data: io.NopCloser(strings.NewReader(strings.Join(offer, "\n")))})
+		case transfer.DataEvent:
+			p.dragging, hover = false, false
+			r := e.Open()
+			b, _ := io.ReadAll(io.LimitReader(r, 1<<20))
+			r.Close()
+			var paths []string
+			for _, q := range strings.Split(string(b), "\n") {
+				// Not onto itself, nor a folder into itself.
+				if q != "" && q != dir && !isInside(dir, q, st.Win) {
+					paths = append(paths, q)
+				}
+			}
+			if len(paths) > 0 {
+				go p.transfer("movein", paths, dir)
+			}
+		}
+	}
+	return hover
+}
+
+// isInside reports whether p is folder or lies in it.
+func isInside(p, folder string, win bool) bool {
+	sep := "/"
+	if win {
+		sep = `\`
+	}
+	return p == folder || strings.HasPrefix(p, strings.TrimSuffix(folder, sep)+sep)
+}
+
+// Drop takes files dropped on the window: when they were dropped on the
+// panel, they are uploaded (SFTP) or copied (local) into the folder row
+// under the pointer, else into the current folder; otherwise fallback runs.
+// It is resolved once the panel has seen where the pointer is.
+func (p *Panel) Drop(paths []string, fallback func()) {
+	if len(paths) == 0 {
+		return
+	}
+	p.dropping = &queuedDrop{paths: paths, fallback: fallback}
+	if p.B.Changed != nil {
+		p.B.Changed()
+	}
+}
+
+func (p *Panel) resolveDrop(st State) {
+	q := p.dropping
+	if q == nil {
+		return
+	}
+	p.dropping = nil
+	if !p.hoverOn {
+		if q.fallback != nil {
+			q.fallback()
+		}
+		return
+	}
+	dir := p.hoverDir
+	if dir == "" {
+		dir = st.Current
+	}
+	p.DropInto(q.paths, dir)
 }
 
 func (p *Panel) row(gtx layout.Context, th *gtk.Theme, st State, entries []sftpsvc.FileEntry, e sftpsvc.FileEntry) layout.Dimensions {
@@ -587,6 +734,20 @@ func (p *Panel) row(gtx layout.Context, th *gtk.Theme, st State, entries []sftps
 			p.openMenu("item", &ee, st)
 		}
 	}
+	// Dragging rows: the selection (or this row) onto a folder row.
+	offer := []string{e.Path}
+	if selected {
+		offer = st.Selected
+	}
+	targetDir := ""
+	if e.IsDir {
+		targetDir = e.Path
+		if rs.click.Hovered() {
+			p.hoverDir = e.Path
+		}
+	}
+	rs.hover = p.dragEvents(gtx, &rs.area, offer, targetDir, rs.hover, st)
+	dropHere := p.dragging && rs.hover && e.IsDir && !selected
 	fg, muted := pal.FgColor, pal.FgColor
 	if selected {
 		fg, muted = pal.SelectedFg, pal.SelectedFg
@@ -598,7 +759,7 @@ func (p *Panel) row(gtx layout.Context, th *gtk.Theme, st State, entries []sftps
 	if !e.IsDir {
 		size = FormatBytes(e.Size)
 	}
-	d := p.rowFrame(gtx, th, &rs.click, selected, e.LinkBroken, [4]layout.Widget{
+	d := p.rowFrameDrop(gtx, th, &rs.click, selected, e.LinkBroken, dropHere, [4]layout.Widget{
 		p.nameCell(th, e, fg),
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Left: 6, Right: 6}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -910,9 +1071,12 @@ func (p *Panel) copyOrMoveTo(op string, paths []string, st State) {
 // names that already exist in dstDir.
 func (p *Panel) transfer(op string, paths []string, dstDir string) {
 	run := func(paths []string, overwrite bool) {
-		if op == "upload" {
-			p.B.Upload(paths)
-		} else {
+		switch op {
+		case "upload":
+			p.B.UploadTo(paths, dstDir)
+		case "movein":
+			p.B.MoveInto(paths, dstDir, overwrite)
+		default:
 			p.B.CopyOrMove(op, paths, dstDir, overwrite)
 		}
 	}
@@ -943,11 +1107,10 @@ func (p *Panel) transfer(op string, paths []string, dstDir string) {
 	}
 }
 
-// Drop handles files dropped on the panel: uploads (SFTP) or copies
-// (local) into the current folder.
-func (p *Panel) Drop(paths []string) {
+// DropInto uploads (SFTP) or copies (local) files from the desktop into dir.
+func (p *Panel) DropInto(paths []string, dir string) {
 	st := p.B.Snapshot()
-	if len(paths) == 0 || st.Current == "" {
+	if len(paths) == 0 || st.Current == "" || dir == "" {
 		return
 	}
 	op := "copy"
@@ -957,7 +1120,7 @@ func (p *Panel) Drop(paths []string) {
 		}
 		op = "upload"
 	}
-	go p.transfer(op, paths, st.Current)
+	go p.transfer(op, paths, dir)
 }
 
 func (p *Panel) openMenu(kind string, target *sftpsvc.FileEntry, st State) {

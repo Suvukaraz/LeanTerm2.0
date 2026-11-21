@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 	"image"
 	"image/color"
+	"os"
 	"strings"
+
+	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 
 	"gioui.org/f32"
 	"gioui.org/io/key"
@@ -563,28 +565,38 @@ func (u *ui) globalKeys(gtx layout.Context) {
 
 // ---- drops -------------------------------------------------------------------
 
-// handleDrops takes files dropped from the desktop: into the shown file
-// browser, else they open in LeanEdit.
+// handleDrops takes files dropped from the desktop: dropped on the shown
+// file browser they go into the folder under the pointer (or the current
+// one); anywhere else they open in LeanEdit.
 func (u *ui) handleDrops() {
 	for {
 		select {
 		case d := <-u.drops:
-			if u.dropFiles(d.Paths) {
+			paths := d.Paths
+			if t := u.activeTab(); t != nil && t.files != nil && t.sftpOpen && hasFiles(t) {
+				t.files.Drop(paths, func() { u.openDropped(paths) })
 				continue
 			}
-			paths := d.Paths
-			go func() {
-				for _, p := range paths {
-					if err := u.editorSvc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
-						u.dropMsg = err.Error()
-						u.w.Invalidate()
-					}
-				}
-			}()
+			u.openDropped(paths)
 		default:
 			return
 		}
 	}
+}
+
+// openDropped opens dropped files in LeanEdit (folders are left out).
+func (u *ui) openDropped(paths []string) {
+	go func() {
+		for _, p := range paths {
+			if fi, err := os.Stat(p); err != nil || fi.IsDir() {
+				continue
+			}
+			if err := u.editorSvc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
+				u.dropMsg = err.Error()
+				u.w.Invalidate()
+			}
+		}
+	}()
 }
 
 func (u *ui) onDrop(d dnd.Drop) {
