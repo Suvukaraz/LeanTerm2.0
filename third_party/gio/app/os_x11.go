@@ -661,6 +661,9 @@ func (h *x11EventHandler) handleEvents() bool {
 			}
 			if bevt._type == C.ButtonRelease {
 				ev.Kind = pointer.Release
+				if bevt.button == C.Button1 {
+					w.dragRelease(bevt) // LeanTerm patch: a drag of files ends
+				}
 			}
 			var btn pointer.Buttons
 			const scrollScale = 10
@@ -709,6 +712,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			w.ProcessEvent(ev)
 		case C.MotionNotify:
 			mevt := (*C.XMotionEvent)(unsafe.Pointer(xev))
+			w.dragMotion(mevt) // LeanTerm patch: a drag of files
 			w.ProcessEvent(pointer.Event{
 				Kind:    pointer.Move,
 				Source:  pointer.Mouse,
@@ -768,6 +772,9 @@ func (h *x11EventHandler) handleEvents() bool {
 			})
 		case C.SelectionRequest:
 			cevt := (*C.XSelectionRequestEvent)(unsafe.Pointer(xev))
+			if w.dragSelectionRequest(cevt) { // LeanTerm patch: dragged files
+				break
+			}
 			if (cevt.selection != w.atoms.clipboard && cevt.selection != w.atoms.primary) || cevt.property == C.None {
 				// Unsupported clipboard or obsolete requestor.
 				break

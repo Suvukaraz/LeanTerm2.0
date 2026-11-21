@@ -7,6 +7,7 @@ package app
 import (
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gioui.org/f32"
@@ -25,6 +26,23 @@ func dragMove(process func(e event.Event), pos f32.Point) {
 }
 
 const uriListMime = "text/uri-list"
+
+// formatURIList formats local paths as a text/uri-list.
+func formatURIList(paths []string) string {
+	var b strings.Builder
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		u := url.URL{Scheme: "file", Path: filepath.ToSlash(p)}
+		if !strings.HasPrefix(u.Path, "/") {
+			u.Path = "/" + u.Path // C:/dir on Windows
+		}
+		b.WriteString(u.String())
+		b.WriteString("\r\n")
+	}
+	return b.String()
+}
 
 // parseURIList returns the local paths of a text/uri-list (RFC 2483):
 // file URIs of this host, one per line, comments starting with '#'.

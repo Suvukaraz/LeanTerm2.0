@@ -35,7 +35,9 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 		u.exitNow()
 	}
 	u.winWidth = gtx.Constraints.Max.X
+	u.winHeight = gtx.Constraints.Max.Y
 	u.trackPointer(gtx)
+	u.dragOut()
 	for drained := false; !drained; {
 		select {
 		case f := <-u.filesEvents:

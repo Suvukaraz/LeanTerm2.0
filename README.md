@@ -27,19 +27,19 @@ curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.
 The script installs the `.deb` package on Debian-based systems and the release archive (with the libraries it needs) elsewhere. It checks every download against the release checksums. Running it again updates LeanTerm. Options are passed after `sh -s --`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.0.0
+curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.1.0
 curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --uninstall
 ```
 
-**Windows 10 (1809) or later**: run `leanterm_2.0.0_windows_amd64_setup.exe` from the [releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest). The installer puts LeanTerm into `C:\Program Files\LeanTerm` and adds Start menu and desktop shortcuts; LeanEdit can be selected as well (`leanedit.exe`, with its own taskbar entry and "Open with" entry). The installer is not code-signed yet, so SmartScreen asks for confirmation on the first start.
+**Windows 10 (1809) or later**: run `leanterm_2.1.0_windows_amd64_setup.exe` from the [releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest). The installer puts LeanTerm into `C:\Program Files\LeanTerm` and adds Start menu and desktop shortcuts; LeanEdit can be selected as well (`leanedit.exe`, with its own taskbar entry and "Open with" entry). The installer is not code-signed yet, so SmartScreen asks for confirmation on the first start.
 
 **Packages** (all on the [releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest), with `SHA256SUMS`):
 
 | File | Contents |
 |---|---|
-| `leanterm_2.0.0_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
-| `leanterm_2.0.0_linux_amd64.tar.gz` | Archive for other distributions, used by `install.sh` |
-| `leanterm_2.0.0_windows_amd64_setup.exe` | Windows installer |
+| `leanterm_2.1.0_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
+| `leanterm_2.1.0_linux_amd64.tar.gz` | Archive for other distributions, used by `install.sh` |
+| `leanterm_2.1.0_windows_amd64_setup.exe` | Windows installer |
 
 The Linux binaries need glibc 2.34 or newer and the EGL, Wayland, X11 and xkbcommon libraries.
 
@@ -49,7 +49,7 @@ The Linux binaries need glibc 2.34 or newer and the EGL, Wayland, X11 and xkbcom
 - **Tree and organisation** – connections in folders with favourites and history, quick connect, bulk edit, Wake-on-LAN, and variables and prompts in connection settings.
 - **Terminals** – tabs and split tabs, a find bar, screenshots and session logs. Local shells use a PTY on Linux and ConPTY on Windows.
 - **Automation** – Expect-style sequences, pre and post commands, macros, clusters with broadcast input, and piping or teeing a terminal's output to a file or command.
-- **File browser** – SFTP for SSH connections and the local file system for local shells, with drag and drop (files from the desktop into the folder under the pointer, rows onto folders to move them), a transfer queue, a folder that follows the terminal (OSC 7) and opening files in the editor.
+- **File browser** – SFTP for SSH connections and the local file system for local shells, with drag and drop (files from the desktop into the folder under the pointer, rows onto folders to move them, rows out of the window to the desktop or a file manager), a transfer queue, a folder that follows the terminal (OSC 7) and opening files in the editor.
 - **LeanEdit** – the text editor, for local and remote files: syntax highlighting for many languages, code folding, word completion, Go to Symbol, bookmarks, a minimap, and reloading of files changed by other programs. See [LeanEdit](#leanedit).
 - **Security** – secrets are encrypted with [age](https://age-encryption.org) and kept in the system keyring or behind a master password, KeePassXC integration, and a GUI lock.
 

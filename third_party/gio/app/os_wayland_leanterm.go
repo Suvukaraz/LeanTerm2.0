@@ -19,6 +19,7 @@ package app
 #include "wayland_xdg_activation.h"
 
 extern const struct xdg_activation_token_v1_listener gio_xdg_activation_token_v1_listener;
+extern const struct wl_data_source_listener gio_lt_drag_source_listener;
 */
 import "C"
 
@@ -107,7 +108,7 @@ func (s *wlSeat) dndEnter(serial C.uint32_t, surf *C.struct_wl_surface, x, y C.w
 	}
 	s.dnd = wlDnD{offer: id, win: w, pos: dndPos(w, x, y)}
 	w.dragMove(s.dnd.pos)
-	if w != nil && slices.Contains(s.offers[id], uriListMime) {
+	if w != nil && s.dragSource == nil && slices.Contains(s.offers[id], uriListMime) {
 		mime := C.CString(uriListMime)
 		defer C.free(unsafe.Pointer(mime))
 		C.wl_data_offer_accept(id, serial, mime)
@@ -218,4 +219,57 @@ func gio_onActivationTokenDone(data unsafe.Pointer, tok *C.struct_xdg_activation
 		return
 	}
 	C.xdg_activation_v1_activate(w.disp.lt.activation, token, w.surf)
+}
+
+// wlDrag is a drag of files from a window to other applications.
+type wlDrag struct {
+	seat  *wlSeat
+	files *fileList
+}
+
+// startFileDrag starts dragging files while the primary button is held
+// (wl_data_device.start_drag with the press's serial).
+func (w *window) startFileDrag(files func() []string) {
+	s := w.disp.seat
+	if s == nil || s.dataDev == nil || w.disp.dataDeviceManager == nil || s.pressSerial == 0 {
+		return
+	}
+	src := C.wl_data_device_manager_create_data_source(w.disp.dataDeviceManager)
+	if src == nil {
+		return
+	}
+	callbackStore(unsafe.Pointer(src), &wlDrag{seat: s, files: &fileList{files: files}})
+	C.wl_data_source_add_listener(src, &C.gio_lt_drag_source_listener, unsafe.Pointer(src))
+	mime := C.CString(uriListMime)
+	C.wl_data_source_offer(src, mime)
+	C.free(unsafe.Pointer(mime))
+	C.wl_data_source_set_actions(src, C.WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY)
+	s.dragSource = src
+	C.wl_data_device_start_drag(s.dataDev, src, w.surf, nil, s.pressSerial)
+	C.wl_display_flush(w.disp.disp)
+}
+
+//export gio_onLtDragSend
+func gio_onLtDragSend(data unsafe.Pointer, src *C.struct_wl_data_source, mime *C.char, fd C.int32_t) {
+	d, _ := callbackLoad(data).(*wlDrag)
+	f := os.NewFile(uintptr(fd), "drag")
+	if d == nil || C.GoString(mime) != uriListMime {
+		f.Close()
+		return
+	}
+	// Fetching the files may take time (downloads): the target reads the
+	// pipe until it is closed.
+	go func() {
+		defer f.Close()
+		_, _ = f.WriteString(d.files.uriList())
+	}()
+}
+
+//export gio_onLtDragEnd
+func gio_onLtDragEnd(data unsafe.Pointer, src *C.struct_wl_data_source) {
+	if d, ok := callbackLoad(data).(*wlDrag); ok && d.seat.dragSource == src {
+		d.seat.dragSource = nil
+	}
+	callbackDelete(data)
+	C.wl_data_source_destroy(src)
 }

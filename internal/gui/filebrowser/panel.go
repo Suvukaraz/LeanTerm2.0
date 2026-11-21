@@ -101,6 +101,24 @@ type Panel struct {
 	dragging bool
 	upArea   int
 	upHover  bool
+	// outPaths are the rows dragged with the button held (outActive): when
+	// the drag leaves the window it continues as a drag to the desktop
+	// (DragOut).
+	outPaths  []string
+	outActive bool
+}
+
+// DragOut reports the paths of rows being dragged with the button held, and
+// whether they are remote (SFTP) files of the browser's session sftpID.
+func (p *Panel) DragOut() (paths []string, sftpID string, ok bool) {
+	if !p.outActive || len(p.outPaths) == 0 {
+		return nil, "", false
+	}
+	st := p.B.Snapshot()
+	if p.B.Backend.Kind() == KindSFTP {
+		sftpID = st.ID
+	}
+	return p.outPaths, sftpID, true
 }
 
 // queuedDrop are files dropped on the window, for the panel or elsewhere.
@@ -608,7 +626,11 @@ func (p *Panel) parentRow(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 // moving the dropped rows into dir. It returns whether the pointer is over
 // the row during a drag.
 func (p *Panel) dragEvents(gtx layout.Context, tag event.Tag, offer []string, dir string, hover bool, st State) bool {
-	filters := []event.Filter{pointer.Filter{Target: tag, Kinds: pointer.Enter | pointer.Leave | pointer.Cancel}}
+	kinds := pointer.Enter | pointer.Leave | pointer.Cancel
+	if offer != nil {
+		kinds |= pointer.Drag | pointer.Release
+	}
+	filters := []event.Filter{pointer.Filter{Target: tag, Kinds: kinds}}
 	if offer != nil {
 		filters = append(filters, transfer.SourceFilter{Target: tag, Type: pathsMime})
 	}
@@ -622,6 +644,18 @@ func (p *Panel) dragEvents(gtx layout.Context, tag event.Tag, offer []string, di
 		}
 		switch e := ev.(type) {
 		case pointer.Event:
+			switch e.Kind {
+			case pointer.Drag:
+				if e.Buttons.Contain(pointer.ButtonPrimary) {
+					p.outPaths, p.outActive = offer, true
+				}
+				continue
+			case pointer.Release, pointer.Cancel:
+				p.outActive = false
+				if e.Kind == pointer.Release {
+					continue
+				}
+			}
 			hover = e.Kind == pointer.Enter
 		case transfer.InitiateEvent:
 			p.dragging = true

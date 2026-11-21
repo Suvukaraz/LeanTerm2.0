@@ -90,6 +90,8 @@ type x11LeanTerm struct {
 		selection, actionCopy, typeList, uriList, data        C.Atom
 		wmIcon, wmPid, startupID, startupBegin, startupMore   C.Atom
 	}
+	// src is a drag of files from the window (os_x11_leanterm_drag.go).
+	src *x11DragSource
 	// The drag over the window.
 	source   C.Window
 	version  int
@@ -174,6 +176,9 @@ func (w *x11Window) activate(token string) {
 func (w *x11Window) xdndMessage(ev *C.XClientMessageEvent) bool {
 	a := &w.lt.atoms
 	l := func(i int) C.long { return C.gio_xdnd_get(ev, C.int(i)) }
+	if w.dragMessage(ev) {
+		return true
+	}
 	switch ev.message_type {
 	case a.enter:
 		w.lt.source = C.Window(l(0))

@@ -209,6 +209,11 @@ type ui struct {
 	statsFrames int
 	// dropHWND is the window that accepts dropped files (Windows).
 	dropHWND uintptr
+	// winHeight is the window's height (drags leaving the window).
+	winHeight int
+	// dragOutStarted: the rows dragged in the file browser left the window
+	// and are dragged to the desktop now (until the button is released).
+	dragOutStarted bool
 	// startToken activates the main window once it is up (the desktop's
 	// activation token of this process).
 	startToken string

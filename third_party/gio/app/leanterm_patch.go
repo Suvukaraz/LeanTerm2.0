@@ -72,3 +72,27 @@ func (w *Window) Activate(token string) {
 		w.driver.Perform(system.ActionRaise)
 	})
 }
+
+// fileDragger is implemented by window drivers that can drag files out.
+type fileDragger interface {
+	startFileDrag(files func() []string)
+}
+
+// StartFileDrag starts dragging files from the window to other applications
+// (file managers, the desktop), as a copy. Call it while the primary button
+// is held, typically when a drag inside the window leaves it. files returns
+// the local paths; it is called once, from any goroutine, when they are
+// needed (on Windows right away, elsewhere when a target asks), and may
+// block, for example to download remote files first. It reports whether
+// the platform supports it (X11, Wayland, Windows).
+func (w *Window) StartFileDrag(files func() []string) bool {
+	if w.driver == nil {
+		return false
+	}
+	d, ok := w.driver.(fileDragger)
+	if !ok {
+		return false
+	}
+	d.startFileDrag(files)
+	return true
+}

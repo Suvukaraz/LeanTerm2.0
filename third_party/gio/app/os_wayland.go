@@ -143,6 +143,10 @@ type wlSeat struct {
 	content []byte
 
 	dnd wlDnD // LeanTerm patch: a drag over a window
+	// LeanTerm patch: the serial of the last button press (a drag of files
+	// from a window starts with it) and the drag of files that runs.
+	pressSerial C.uint32_t
+	dragSource  *C.struct_wl_data_source
 }
 
 type repeatState struct {
@@ -926,6 +930,9 @@ func gio_onPointerMotion(data unsafe.Pointer, p *C.struct_wl_pointer, t C.uint32
 func gio_onPointerButton(data unsafe.Pointer, p *C.struct_wl_pointer, serial, t, wbtn, state C.uint32_t) {
 	s := callbackLoad(data).(*wlSeat)
 	s.serial = serial
+	if state == C.WL_POINTER_BUTTON_STATE_PRESSED {
+		s.pressSerial = serial // LeanTerm patch
+	}
 	w := s.pointerFocus
 	// From Linux: include/uapi/linux/input-event-codes.h
 	const (
