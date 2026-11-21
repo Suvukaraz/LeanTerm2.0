@@ -205,6 +205,7 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 			gtx.Execute(key.FocusCmd{Tag: t.ed})
 		}
 	}
+	th.LayoutTooltip(gtx, u.pointer)
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
@@ -374,21 +375,22 @@ func (a *App) toolBar(gtx layout.Context) layout.Dimensions {
 		icon     rune
 		disabled bool
 		action   func(gtx layout.Context)
+		tip      string
 	}
 	tools := []tool{
-		{iconNew, false, func(layout.Context) { a.NewDocument() }},
-		{iconOpen, false, func(layout.Context) { a.ChooseAndOpen() }},
-		{iconSave, noDoc, func(layout.Context) { a.Save() }},
-		{iconSaveAs, noDoc, func(layout.Context) { a.SaveAs() }},
-		{0, false, nil},
-		{iconUndo, noDoc, func(layout.Context) { a.run(func(t *Tab) { t.ed.Undo() }) }},
-		{iconRedo, noDoc, func(layout.Context) { a.run(func(t *Tab) { t.ed.Redo() }) }},
-		{0, false, nil},
-		{iconCut, noDoc, func(gtx layout.Context) { a.copySelection(gtx, true) }},
-		{iconCopy, noDoc, func(gtx layout.Context) { a.copySelection(gtx, false) }},
-		{iconPaste, noDoc, func(gtx layout.Context) { a.paste(gtx) }},
-		{0, false, nil},
-		{iconFind, noDoc, func(gtx layout.Context) { a.openSearch(gtx) }},
+		{iconNew, false, func(layout.Context) { a.NewDocument() }, "New (Ctrl+N)"},
+		{iconOpen, false, func(layout.Context) { a.ChooseAndOpen() }, "Open… (Ctrl+O)"},
+		{iconSave, noDoc, func(layout.Context) { a.Save() }, "Save (Ctrl+S)"},
+		{iconSaveAs, noDoc, func(layout.Context) { a.SaveAs() }, "Save As… (Ctrl+Shift+S)"},
+		{0, false, nil, ""},
+		{iconUndo, noDoc, func(layout.Context) { a.run(func(t *Tab) { t.ed.Undo() }) }, "Undo (Ctrl+Z)"},
+		{iconRedo, noDoc, func(layout.Context) { a.run(func(t *Tab) { t.ed.Redo() }) }, "Redo (Ctrl+Shift+Z)"},
+		{0, false, nil, ""},
+		{iconCut, noDoc, func(gtx layout.Context) { a.copySelection(gtx, true) }, "Cut (Ctrl+X)"},
+		{iconCopy, noDoc, func(gtx layout.Context) { a.copySelection(gtx, false) }, "Copy (Ctrl+C)"},
+		{iconPaste, noDoc, func(gtx layout.Context) { a.paste(gtx) }, "Paste (Ctrl+V)"},
+		{0, false, nil, ""},
+		{iconFind, noDoc, func(gtx layout.Context) { a.openSearch(gtx) }, "Find and Replace (Ctrl+F)"},
 	}
 	gtx.Constraints.Min.X = gtx.Constraints.Max.X
 	m := op.Record(gtx.Ops)
@@ -415,7 +417,7 @@ func (a *App) toolBar(gtx layout.Context) layout.Dimensions {
 			}
 			kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Right: 2}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return gtk.Button{Icon: tl.icon, Disabled: tl.disabled}.Layout(gtx, th, c)
+					return gtk.Button{Icon: tl.icon, Disabled: tl.disabled, Tooltip: tl.tip}.Layout(gtx, th, c)
 				})
 			}))
 		}
@@ -488,6 +490,7 @@ func (a *App) tabLayout(gtx layout.Context, t *Tab) layout.Dimensions {
 	mid := u.tabMid[t.ID]
 	active := t.ID == a.active
 	hovered := hv.Update(gtx)
+	th.Tip(gtx, hv, hovered, c.Pressed(), tabTooltip(t))
 	fg := pal.MutedFg
 	if active {
 		fg = pal.FgColor
@@ -539,6 +542,21 @@ func (a *App) tabLayout(gtx layout.Context, t *Tab) layout.Dimensions {
 	})
 }
 
+// tabTooltip is a tab's full path (and host of a remote file).
+func tabTooltip(t *Tab) string {
+	if t.File == nil {
+		return t.Title
+	}
+	if t.File.Kind == "sftp" {
+		host := t.File.Host
+		if host == "" {
+			host = "remote"
+		}
+		return host + ": " + t.File.Path
+	}
+	return t.File.Path
+}
+
 // fadeTo is the close button's opacity 0.7 (1 when hovered).
 func fadeTo(c, bg color.NRGBA, full bool) color.NRGBA {
 	if full {
@@ -571,7 +589,8 @@ func (a *App) lookFor(t *Tab) look {
 			tw = t.indentWidth
 		}
 	}
-	return look{family: ed.Font.Family, size: size, tabWidth: tw, softTab: soft, wrap: a.wrap(), spaces: a.whitespace(),
+	return look{family: ed.Font.Family, size: size, tabWidth: tw, softTab: soft, wrap: a.wrap(),
+		wrapIndent: ed.WrapIndent, wrapMarkers: ed.WrapMarkers, spaces: a.whitespace(),
 		tabs: a.whitespace() || ed.ShowTabs, pal: a.ui_.th.Pal}
 }
 
@@ -693,9 +712,11 @@ func (a *App) statusBar(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: 2, Bottom: 2, Left: 8, Right: 8}.Layout(gtx, gtk.Text{S: s, Size: small, Color: c, MaxLines: 1}.Widget(th))
 		}
 	}
+	sbTips := [...]string{"Insert mode", "Selection mode", "Encoding: click to change", "Line endings: click to switch", "Syntax highlighting: click to choose the language", ""}
 	button := func(i int, s string, c color.NRGBA, onClick func(gtx layout.Context)) layout.Widget {
 		return func(gtx layout.Context) layout.Dimensions {
 			b := &u.sb[i]
+			defer th.ClickableTip(gtx, b, sbTips[i])
 			clicked := b.Clicked(gtx)
 			if u.swallowSB == i && (clicked || !b.Pressed()) {
 				u.swallowSB, clicked = -1, false

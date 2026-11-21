@@ -159,6 +159,11 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			return u.globalPointer(gtx)
 		}),
+		// The tooltip of the widget under the pointer.
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			u.th.LayoutTooltip(gtx, u.lastPtr)
+			return layout.Dimensions{}
+		}),
 	)
 }
 
@@ -186,20 +191,21 @@ func (u *ui) buttonBar(gtx layout.Context, top bool) layout.Dimensions {
 		click  *widget.Clickable
 		active bool
 		off    bool
+		tip    string
 	}
 	lockIcon := fonts.IconUnlock
 	if locked {
 		lockIcon = fonts.IconLock
 	}
 	items := []item{
-		{fonts.IconList, iconGreen, "Connections", &u.buttons.panelToggle, u.panelVisible, false},
-		{fonts.IconBriefcase, iconSFTP, "File Browser", &u.buttons.sftpToggle, u.sftpVisible, false},
-		{fonts.IconSitemap, iconGray, "Clusters", &u.buttons.clustersToggle, u.clustersVisible, false},
-		{fonts.IconTerminal, iconGreen, "Local shell", &u.buttons.localShell, false, false},
-		{fonts.IconPowerOff, iconGray, "Wake On Lan", &u.buttons.wol, false, false},
-		{fonts.IconTools, iconGray, "Settings", &u.buttons.prefs, false, false},
-		{lockIcon, iconLock, "", &u.buttons.lock, locked, !pp},
-		{fonts.IconInfo, color.NRGBA{}, "About", &u.buttons.about, false, false},
+		{fonts.IconList, iconGreen, "Connections", &u.buttons.panelToggle, u.panelVisible, false, ""},
+		{fonts.IconBriefcase, iconSFTP, "File Browser", &u.buttons.sftpToggle, u.sftpVisible, false, ""},
+		{fonts.IconSitemap, iconGray, "Clusters", &u.buttons.clustersToggle, u.clustersVisible, false, ""},
+		{fonts.IconTerminal, iconGreen, "Local shell", &u.buttons.localShell, false, false, ""},
+		{fonts.IconPowerOff, iconGray, "Wake On Lan", &u.buttons.wol, false, false, ""},
+		{fonts.IconTools, iconGray, "Settings", &u.buttons.prefs, false, false, ""},
+		{lockIcon, iconLock, "", &u.buttons.lock, locked, !pp, "Lock LeanTerm (needs a master password)"},
+		{fonts.IconInfo, color.NRGBA{}, "About", &u.buttons.about, false, false, ""},
 	}
 	gtx.Constraints.Min.X = gtx.Constraints.Max.X
 	call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -210,7 +216,7 @@ func (u *ui) buttonBar(gtx layout.Context, top bool) layout.Dimensions {
 					kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
 				}
 				kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					b := gtk.Button{Icon: it.icon, IconColor: it.color, Label: it.label, Active: it.active, Disabled: it.off}
+					b := gtk.Button{Icon: it.icon, IconColor: it.color, Label: it.label, Active: it.active, Disabled: it.off, Tooltip: it.tip}
 					return b.Layout(gtx, u.th, it.click)
 				}))
 			}
@@ -412,8 +418,9 @@ func (u *ui) terminalStatusBar(gtx layout.Context, t *tab) layout.Dimensions {
 		return layout.W.Layout(gtx, gtk.Text{S: status, Size: unit.Sp(11), Color: p.FgColor, MaxLines: 1}.Widget(u.th))
 	}))
 	// .status-btn: transparent, 1px border, radius 3px, padding 1px 3px.
-	statusBtn := func(icon rune, c color.NRGBA, active bool, click *widget.Clickable) layout.FlexChild {
+	statusBtn := func(icon rune, c color.NRGBA, active bool, click *widget.Clickable, tip string) layout.FlexChild {
 		return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			defer u.th.ClickableTip(gtx, click, tip)
 			return click.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Inset{Left: 4, Right: 4, Top: 2, Bottom: 2}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -442,9 +449,13 @@ func (u *ui) terminalStatusBar(gtx layout.Context, t *tab) layout.Dimensions {
 		if t.kind != "local" {
 			ic, c = fonts.IconBriefcase, iconSFTP
 		}
-		right = append(right, statusBtn(ic, c, t.sftpOpen, &t.sftpBtn), gap)
+		tip := "Show the file browser (Alt+Ctrl+S)"
+		if t.sftpOpen {
+			tip = "Hide the file browser (Alt+Ctrl+S)"
+		}
+		right = append(right, statusBtn(ic, c, t.sftpOpen, &t.sftpBtn, tip), gap)
 	}
-	right = append(right, statusBtn(fonts.IconInfo, p.FgColor, false, &u.buttons.infoTabBtn))
+	right = append(right, statusBtn(fonts.IconInfo, p.FgColor, false, &u.buttons.infoTabBtn, "Connection info"))
 
 	h := gtx.Dp(30)
 	w := gtx.Constraints.Max.X

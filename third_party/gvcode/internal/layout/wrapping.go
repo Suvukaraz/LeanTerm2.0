@@ -204,6 +204,35 @@ type lineWrapper struct {
 	currentLine     Line
 	glyphBuf        glyphReader
 	glyphs          []text.Glyph
+	// indentWrapped: continuation lines start at the paragraph's
+	// indentation (LeanTerm, as KWrite), unless it is more than
+	// maxIndentRatio of the width.
+	indentWrapped bool
+}
+
+// maxIndentRatio is KWrite's default limit for aligning wrapped lines.
+const maxIndentRatio = 0.8
+
+// leadingIndent is the width of the paragraph's leading spaces and tabs.
+func (w *lineWrapper) leadingIndent(paragraph []rune) fixed.Int26_6 {
+	var x fixed.Int26_6
+	for _, r := range paragraph {
+		switch r {
+		case ' ':
+			x += w.spaceGlyph.Advance
+		case '\t':
+			step := w.tabStopInterval
+			if step <= 0 {
+				step = w.spaceGlyph.Advance
+			}
+			x = (x/step + 1) * step
+		case '\n', '\r':
+			return 0 // a line of only white space
+		default:
+			return x
+		}
+	}
+	return 0
 }
 
 func (w *lineWrapper) setup(nextGlyph func() (text.Glyph, bool), paragraph []rune, maxWidth int, tabWidth int, spaceGlyph *text.Glyph) {
@@ -226,10 +255,24 @@ func (w *lineWrapper) WrapParagraph(glyphsIter iter.Seq[text.Glyph], paragraph [
 
 	lines := make([]Line, 0)
 
+	var indent fixed.Int26_6
+	if w.indentWrapped && maxWidth < 1e6 {
+		indent = w.leadingIndent(paragraph)
+		if indent > fixed.I(int(float64(maxWidth)*maxIndentRatio)) {
+			indent = 0
+		}
+	}
 	for {
+		if len(lines) == 1 && indent > 0 {
+			// The continuation lines have less room.
+			w.maxWidth = maxWidth - indent.Ceil()
+		}
 		l := w.wrapNextLine(paragraph)
 		if len(l.Glyphs) == 0 {
 			break
+		}
+		if len(lines) > 0 {
+			l.Indent = indent
 		}
 
 		lines = append(lines, l)

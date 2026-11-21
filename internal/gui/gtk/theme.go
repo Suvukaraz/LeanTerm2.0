@@ -29,6 +29,8 @@ const FontSize = unit.Sp(10 * 96.0 / 72)
 type Theme struct {
 	*material.Theme
 	Pal *Palette
+
+	tips tooltips
 }
 
 // New creates the theme for a color scheme ("light", else dark) with the

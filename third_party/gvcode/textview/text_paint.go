@@ -31,6 +31,7 @@ func (e *TextView) calculateViewSize(gtx layout.Context) image.Point {
 
 func (e *TextView) layoutText(shaper *text.Shaper) {
 	//e.layoutByParagraph(shaper, &it)
+	e.layouter.WrapIndent = e.WrapIndent // LeanTerm
 	e.dims = e.layouter.Layout(shaper, &e.params, e.TabWidth, e.WrapLine)
 }
 

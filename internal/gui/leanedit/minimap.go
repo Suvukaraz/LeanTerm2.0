@@ -8,6 +8,7 @@ import (
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -63,9 +64,21 @@ func (t *Tab) miniGeo(gtx layout.Context, height int) miniGeo {
 }
 
 // scrollToLine makes line (0-based, fractional) the first visible one.
+// gvcode scrolls relative to where it is now, and several pointer events
+// of one frame scroll one after another: the distance is measured from the
+// current position, not from g (which is the frame's start).
 func (t *Tab) scrollToLine(gtx layout.Context, g miniGeo, line float32) {
 	line = max(0, min(line, float32(g.lines)-g.visible))
-	t.ed.Scroll(gtx, 0, (line-g.top)/float32(g.lines))
+	t.ed.Scroll(gtx, 0, (line-t.scrollTop(g))/float32(max(1, g.lines)))
+}
+
+// scrollTop is the first visible line now (fractional).
+func (t *Tab) scrollTop(g miniGeo) float32 {
+	_, _, minY, maxY := t.ed.ScrollRatio()
+	if maxY <= 0 || minY != minY {
+		return 0
+	}
+	return minY * float32(g.lines)
 }
 
 func scopeColor(p *gtk.Palette, s syntax.StyleScope) color.NRGBA {
@@ -111,6 +124,7 @@ func (a *App) minimapLayout(gtx layout.Context, th *gtk.Theme, t *Tab) layout.Di
 	sliderTop := int(g.top*float32(g.line)) - g.offset
 	sliderH := max(2*g.line, int(g.visible*float32(g.line)))
 
+	scrolled := false
 	for {
 		ev, ok := gtx.Event(pointer.Filter{Target: &m.tag, Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Cancel | pointer.Scroll,
 			ScrollY: pointer.ScrollRange{Min: -1 << 20, Max: 1 << 20}})
@@ -121,6 +135,7 @@ func (a *App) minimapLayout(gtx layout.Context, th *gtk.Theme, t *Tab) layout.Di
 		if !ok {
 			continue
 		}
+		scrolled = scrolled || e.Kind != pointer.Release
 		switch e.Kind {
 		case pointer.Press:
 			if !e.Buttons.Contain(pointer.ButtonPrimary) {
@@ -146,12 +161,24 @@ func (a *App) minimapLayout(gtx layout.Context, th *gtk.Theme, t *Tab) layout.Di
 		case pointer.Release, pointer.Cancel:
 			m.drag = false
 		case pointer.Scroll:
-			// In lines: the editor's own wheel step is a third of a page.
-			lh := float32(h) / max(1, g.visible)
-			t.scrollToLine(gtx, g, g.top+e.Scroll.Y/max(1, lh*float32(g.line)/float32(g.line)))
+			// The wheel over the minimap scrolls the text as it does over
+			// the text: by the same pixels (the visible part of the
+			// document is h pixels high).
+			_, _, minY, maxY := t.ed.ScrollRatio()
+			if span := min(1, maxY) - minY; span > 0 && span == span {
+				t.ed.Scroll(gtx, 0, e.Scroll.Y*span/float32(max(1, h)))
+			}
 		}
 	}
 	hovered := m.hover.Update(gtx)
+	if scrolled {
+		// Draw where the text now is (the minimap is laid out before the
+		// text), and let the text follow in this frame's successor.
+		g = t.miniGeo(gtx, h)
+		sliderTop = int(g.top*float32(g.line)) - g.offset
+		sliderH = max(2*g.line, int(g.visible*float32(g.line)))
+		gtx.Execute(op.InvalidateCmd{})
+	}
 
 	defer clip.Rect{Max: image.Pt(w, h)}.Push(gtx.Ops).Pop()
 	fillRect(gtx, image.Rect(0, 0, w, h), pal.BaseColor)

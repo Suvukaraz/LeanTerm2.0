@@ -71,6 +71,9 @@ type TextView struct {
 
 	// WrapLine configures whether the displayed text will be broken into lines or not.
 	WrapLine bool
+	// WrapIndent aligns wrapped continuation lines to their line's
+	// indentation (LeanTerm).
+	WrapIndent bool
 
 	// WordSeperators configures a set of characters that will be used as word separators
 	// when doing word related operations, like navigating or deleting by word.
@@ -129,6 +132,15 @@ func (e *TextView) Source() buffer.TextSource {
 
 func (e *TextView) Changed() bool {
 	return e.src.Changed()
+}
+
+// SetWrapIndent aligns wrapped continuation lines to the indentation of
+// their line (LeanTerm).
+func (e *TextView) SetWrapIndent(enabled bool) {
+	if e.WrapIndent != enabled {
+		e.WrapIndent = enabled
+		e.invalidate()
+	}
 }
 
 func (e *TextView) SetWrapLine(enabled bool) {

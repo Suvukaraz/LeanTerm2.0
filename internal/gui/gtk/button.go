@@ -41,6 +41,9 @@ type Button struct {
 	Primary bool
 	// MinWidth widens the button (dialog buttons).
 	MinWidth unit.Dp
+	// Tooltip is shown when the pointer rests on the button (icon buttons
+	// should have one).
+	Tooltip string
 }
 
 // Layout draws the button; clicks are read from c as usual.
@@ -54,9 +57,13 @@ func (b Button) Layout(gtx layout.Context, th *Theme, c *widget.Clickable) layou
 		c = new(widget.Clickable)
 	}
 	// CSS: margin 1px around the button.
-	return layout.UniformInset(1).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	d := layout.UniformInset(1).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return b.layout(gtx, th, c)
 	})
+	if b.Tooltip != "" {
+		th.ClickableTip(gtx, c, b.Tooltip)
+	}
+	return d
 }
 
 func (b Button) layout(gtx layout.Context, th *Theme, c *widget.Clickable) layout.Dimensions {

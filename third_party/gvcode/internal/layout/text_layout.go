@@ -39,6 +39,10 @@ type TextLayout struct {
 	paragraphBuf []byte
 	tabWidth     int
 	wrapLine     bool
+	// WrapIndent aligns wrapped continuation lines to the indentation of
+	// their paragraph (LeanTerm); wrapIndent is the value of the cache.
+	WrapIndent bool
+	wrapIndent bool
 	// LeanTerm: code folding. hidden are the folded paragraphs (inclusive
 	// ranges of paragraph indices, sorted); hiddenChanged forces the line
 	// positions to be recomputed.
@@ -140,7 +144,7 @@ func (tl *TextLayout) LineHidden(idx int) bool {
 }
 
 func (tl *TextLayout) Layout(shaper *text.Shaper, params *text.Parameters, tabWidth int, wrapLine bool) layout.Dimensions {
-	cacheValid := tl.shaper == shaper && tl.params == *params && tl.tabWidth == tabWidth && tl.wrapLine == wrapLine
+	cacheValid := tl.shaper == shaper && tl.params == *params && tl.tabWidth == tabWidth && tl.wrapLine == wrapLine && tl.wrapIndent == tl.WrapIndent
 	if !cacheValid {
 		clear(tl.glyphCache)
 		tl.paragraphs = tl.paragraphs[:0]
@@ -148,6 +152,8 @@ func (tl *TextLayout) Layout(shaper *text.Shaper, params *text.Parameters, tabWi
 	tl.shaper = shaper
 	tl.tabWidth = tabWidth
 	tl.wrapLine = wrapLine
+	tl.wrapIndent = tl.WrapIndent
+	tl.wrapper.indentWrapped = tl.WrapIndent
 	clear(tl.nextCache)
 	tl.nextParas = tl.nextParas[:0]
 	oldPositions := tl.Positions
@@ -361,7 +367,10 @@ func (tl *TextLayout) calculateXOffsets(startLine int) {
 	for i := startLine; i < len(tl.Lines); i++ {
 		line := tl.Lines[i]
 		alignOff := tl.params.Alignment.Align(tl.params.Locale.Direction, line.Width, tl.params.MaxWidth)
-		tl.Lines[i].recompute(alignOff, runeOff)
+		tl.Lines[i].recompute(alignOff+line.Indent, runeOff)
+		if line.Indent > 0 {
+			tl.Lines[i].XOff = alignOff + line.Indent // LeanTerm: wrap indentation
+		}
 		runeOff += line.Runes
 	}
 }

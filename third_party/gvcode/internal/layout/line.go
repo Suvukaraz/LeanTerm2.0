@@ -21,6 +21,10 @@ type Line struct {
 	Runes int
 	// runeOff tracks the rune offset of the first rune of the line in the document.
 	RuneOff int
+	// Indent moves a wrapped continuation line right to the paragraph's
+	// indentation (LeanTerm: KWrite's "align dynamically wrapped lines to
+	// indentation depth").
+	Indent fixed.Int26_6
 	// Hidden marks the lines of a folded paragraph (LeanTerm: code folding).
 	// They take no vertical space: their YOff is the one of the visible line
 	// above.

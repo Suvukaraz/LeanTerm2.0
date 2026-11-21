@@ -154,6 +154,10 @@ type EditorConfig struct {
 	// AutoDetectIndent takes tabs or spaces and the width from the file (KWrite).
 	AutoDetectIndent     bool   `toml:"auto_detect_indent" comment:"Detect the indentation (tabs or spaces, width) of opened files"`
 	WordWrap             bool   `toml:"word_wrap" comment:"Wrap long lines"`
+	// KWrite's dynamic word wrap: wrapped rows start at the line's indentation
+	// and show an indicator in the line number gutter.
+	WrapIndent  bool `toml:"wrap_indent" comment:"Align wrapped lines to the indentation of their line (KWrite)"`
+	WrapMarkers bool `toml:"wrap_markers" comment:"Show word wrap indicators next to the line numbers (KWrite)"`
 	ShowWhitespace       bool   `toml:"show_whitespace" comment:"Show spaces and tabs"`
 	ShowTabs             bool   `toml:"show_tabs" comment:"Show tabs (also without show_whitespace, like KWrite)"`
 	ShowMinimap          bool   `toml:"show_minimap" comment:"Show the scrollbar minimap (KWrite style)"`

@@ -213,6 +213,7 @@ func (p *Panel) header(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 		return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 			layout.Flexed(1, gtk.FillWidth(gtk.Text{S: p.title(), Size: 12, Weight: font.Bold, Color: pal.FgColor}.Widget(th))),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				defer th.ClickableTip(gtx, &p.close, "Hide the file browser")
 				return p.close.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					c := pal.MutedFg
 					if p.close.Hovered() {
@@ -228,11 +229,13 @@ func (p *Panel) header(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 
 // cp is a .button-cp toolbar button: transparent until hovered, padding
 // 3px 5px, 40% opacity when disabled.
-func cp(gtx layout.Context, th *gtk.Theme, c *widget.Clickable, icon rune, iconColor color.NRGBA, disabled, active bool) layout.Dimensions {
+func cp(gtx layout.Context, th *gtk.Theme, c *widget.Clickable, icon rune, iconColor color.NRGBA, disabled, active bool, tip string) layout.Dimensions {
 	pal := th.Pal
 	if disabled {
 		gtx = gtx.Disabled()
 		iconColor.A = 102
+	} else if tip != "" {
+		defer th.ClickableTip(gtx, c, tip)
 	}
 	return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		m := op.Record(gtx.Ops)
@@ -263,6 +266,7 @@ func iconGray(pal *gtk.Palette) color.NRGBA {
 // historyButton is .path-dropdown-btn: a square joined to the entry with
 // a 9px ▼.
 func (p *Panel) historyButton(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
+	defer th.ClickableTip(gtx, &p.histBtn, "Recent folders")
 	return p.histBtn.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		sz := image.Pt(gtx.Dp(22), gtx.Dp(26))
 		bg := color.NRGBA{R: 0xe8, G: 0xe8, B: 0xe8, A: 0xff}
@@ -295,8 +299,12 @@ func (p *Panel) toolbar(gtx layout.Context, th *gtk.Theme, st State) layout.Dime
 		})
 	})
 	gap := layout.Rigid(layout.Spacer{Width: 3}.Layout)
+	tips := map[*widget.Clickable]string{
+		&p.back: "Back", &p.fwd: "Forward", &p.upBtn: "Parent folder (Backspace)", &p.home: "Home folder",
+		&p.refresh: "Refresh (F5)", &p.newDir: "New folder (F7)", &p.upl: "Upload a file", &p.dl: "Download the selection",
+	}
 	b := func(c *widget.Clickable, icon rune, col color.NRGBA, disabled bool) layout.FlexChild {
-		return layout.Rigid(func(gtx layout.Context) layout.Dimensions { return cp(gtx, th, c, icon, col, disabled, false) })
+		return layout.Rigid(func(gtx layout.Context) layout.Dimensions { return cp(gtx, th, c, icon, col, disabled, false, tips[c]) })
 	}
 	_, canUp := ParentPath(st.Current, st.Win)
 	kids := []layout.FlexChild{
@@ -313,7 +321,7 @@ func (p *Panel) toolbar(gtx layout.Context, th *gtk.Theme, st State) layout.Dime
 	kids = append(kids, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 		return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, 0)}
 	}), layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return cp(gtx, th, &p.more, fonts.IconBars, fg, false, p.menu.Opened() && p.menuKind == "more")
+		return cp(gtx, th, &p.more, fonts.IconBars, fg, false, p.menu.Opened() && p.menuKind == "more", "More actions")
 	}))
 	return bar(gtx, pal.HeaderBg, pal.BorderColor, layout.Inset{Top: 3, Bottom: 3, Left: 6, Right: 6}, func(gtx layout.Context) layout.Dimensions {
 		gtx.Constraints.Min.X = gtx.Constraints.Max.X
