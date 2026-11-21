@@ -2,9 +2,8 @@
 
 package dnd
 
-// Enable is not implemented for X11 and Wayland yet: Gio's event loops ignore
-// the XDND client messages and the Wayland data-device drop, so this needs a
-// change in Gio itself.
+// Enable is not needed on X11 and Wayland: Gio (third_party/gio) handles
+// XDND and Wayland drops and delivers app.FileDropEvent.
 func Enable(uintptr, func(Drop)) error { return ErrUnsupported }
 
 // SimulateDrop is only implemented on Windows.

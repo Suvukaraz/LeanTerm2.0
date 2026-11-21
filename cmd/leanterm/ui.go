@@ -209,4 +209,7 @@ type ui struct {
 	statsFrames int
 	// dropHWND is the window that accepts dropped files (Windows).
 	dropHWND uintptr
+	// startToken activates the main window once it is up (the desktop's
+	// activation token of this process).
+	startToken string
 }

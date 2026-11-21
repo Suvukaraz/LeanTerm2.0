@@ -216,3 +216,31 @@ func TestConcurrentForwards(t *testing.T) {
 		t.Fatalf("handler calls = %d; want 8", n)
 	}
 }
+
+func TestStaleLockOfDeadProcess(t *testing.T) {
+	dir := t.TempDir()
+	// A lock of a process that does not exist is not dialled.
+	if err := writeLock(dir, lockInfo{Port: 1, Token: "x", PID: 1 << 30}); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := Forward(dir, []string{"a.txt"}); err != nil || ok {
+		t.Fatalf("Forward to a dead process = %v, %v; want false, nil", ok, err)
+	}
+}
+
+func TestForwardActivationToken(t *testing.T) {
+	dir := t.TempDir()
+	got := make(chan Request, 1)
+	srv, err := ListenRequests(dir, func(r Request) { got <- r })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+	if ok, err := ForwardRequest(dir, Request{Files: []string{"/a.txt"}, Activation: "tok-1"}); err != nil || !ok {
+		t.Fatalf("ForwardRequest = %v, %v", ok, err)
+	}
+	r := <-got
+	if r.Activation != "tok-1" || len(r.Files) != 1 {
+		t.Fatalf("request = %+v", r)
+	}
+}

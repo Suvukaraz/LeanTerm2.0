@@ -22,12 +22,14 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
+	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/appcore"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/dialogs"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/dnd"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/winsys"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
 )
@@ -45,15 +47,22 @@ func main() {
 	stats := flag.Bool("stats", false, "log the frames drawn per second")
 	leanEdit := flag.Bool("leanedit", false, "run only LeanEdit (files as arguments)")
 	newWindow := flag.Bool("new-window", false, "LeanEdit: open its own window even when LeanEdit runs already (File → New Window)")
+	shortcutAppID := flag.String("set-shortcut-appid", "", "Windows installer: write this AppUserModelID into the shortcuts (.lnk) given as arguments")
 	flag.Parse()
-	if *leanEdit {
+	if *shortcutAppID != "" {
+		os.Exit(setShortcutAppIDs(*shortcutAppID, flag.Args()))
+	}
+	if *leanEdit || isLeanEditExe() {
 		runLeanEdit(*configDir, flag.Args(), *newWindow)
 		return
 	}
+	// LeanTerm's identity in the desktop (taskbar entry, .desktop file, icon).
+	winsys.SetProcess(winsys.LeanTerm)
+	startToken := winsys.StartupToken()
 
 	core, err := appcore.Open(appcore.Options{ConfigDir: *configDir, MasterPassword: *password, ReadOnly: *readOnly, NoBackup: *noBackup})
 	if err != nil {
-		log.Fatal(err)
+		fatalStartup(config.ResolveConfigDir(*configDir), err)
 	}
 	cfg := core.Store.Config()
 
@@ -67,20 +76,22 @@ func main() {
 	if width < 640 || height < 420 {
 		width, height = 1200, 760
 	}
-	w.Option(app.Title(title), app.Size(unit.Dp(width), unit.Dp(height)), app.MinSize(640, 420))
+	w.Option(append([]app.Option{app.Title(title), app.Size(unit.Dp(width), unit.Dp(height)), app.MinSize(640, 420)},
+		winsys.LeanTerm.Options()...)...)
 
 	u := &ui{
-		w:         w,
-		core:      core,
-		opened:    make(chan session.SessionInfo, 16),
-		closed:    make(chan string, 16),
-		engine:    *engine,
-		stats:     *stats,
-		drops:     make(chan dnd.Drop, 4),
-		readOnly:  *readOnly,
-		splits:    map[string]*splitState{},
-		newData:   map[string]bool{},
-		frameSize: image.Point{X: width, Y: height},
+		w:          w,
+		core:       core,
+		opened:     make(chan session.SessionInfo, 16),
+		closed:     make(chan string, 16),
+		engine:     *engine,
+		stats:      *stats,
+		drops:      make(chan dnd.Drop, 4),
+		readOnly:   *readOnly,
+		splits:     map[string]*splitState{},
+		newData:    map[string]bool{},
+		frameSize:  image.Point{X: width, Y: height},
+		startToken: startToken,
 	}
 	u.panel = gtk.NewPaned()
 	// General.ColorScheme decides the palette; SettingsChanged (event) switches it live.
@@ -157,7 +168,8 @@ func main() {
 		})
 	}
 
-	// File drops: handled in the event loop on Windows (see drop_windows.go).
+	// File drops: app.FileDropEvent on X11 and Wayland, the subclassed
+	// window on Windows (see drop_windows.go); both end in onDrop.
 
 	// Local shell autostart and connections marked "launch at startup".
 	if cfg.LocalShell.Autostart {
@@ -233,9 +245,12 @@ func (u *ui) exitNow() {
 func (u *ui) host() services.Host { return u }
 
 func (u *ui) run() error {
+	defer crashGuard(u.core.Store.ConfigDir())
 	var ops op.Ops
 	for {
 		switch e := u.w.Event().(type) {
+		case app.FileDropEvent:
+			u.onDrop(dnd.Drop{Paths: e.Paths, X: int(e.Position.X), Y: int(e.Position.Y)})
 		case app.DestroyEvent:
 			return e.Err
 		case *app.ClosingEvent:
@@ -243,6 +258,12 @@ func (u *ui) run() error {
 			e.Abort()
 			u.requestQuit()
 		case app.FrameEvent:
+			if t := u.startToken; t != "" {
+				// Started by the user from the desktop: the window comes to the
+				// front with the desktop's token.
+				u.startToken = ""
+				go u.w.Activate(t)
+			}
 			if u.stats {
 				u.countFrame()
 			}
@@ -252,6 +273,7 @@ func (u *ui) run() error {
 			e.Frame(gtx.Ops)
 		default:
 			if ev, ok := e.(app.ViewEvent); ok {
+				winsys.View(winsys.LeanTerm, ev)
 				u.maybeEnableDrop(ev)
 			}
 		}
@@ -272,6 +294,19 @@ func (u *ui) ChooseFile(d services.FileDialog) (string, error) {
 }
 
 var _ services.Host = (*ui)(nil)
+
+// setShortcutAppIDs writes id into the shortcuts (the Windows installer, so
+// that a pinned shortcut and its windows share one taskbar button).
+func setShortcutAppIDs(id string, lnks []string) int {
+	code := 0
+	for _, l := range lnks {
+		if err := winsys.SetShortcutAppID(l, id); err != nil {
+			log.Printf("%s: %v", l, err)
+			code = 1
+		}
+	}
+	return code
+}
 
 // countFrame logs the frames per second (-stats).
 func (u *ui) countFrame() {

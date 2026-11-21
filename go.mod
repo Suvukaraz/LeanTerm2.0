@@ -60,3 +60,5 @@ require (
 )
 
 replace github.com/oligo/gvcode => ./third_party/gvcode
+
+replace gioui.org => ./third_party/gio

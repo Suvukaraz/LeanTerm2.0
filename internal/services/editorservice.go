@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
@@ -139,16 +140,30 @@ func (es *EditorService) TakePending() []EditorFile {
 
 // NewWindow starts another LeanEdit with its own window (File → New Window),
 // also when LeanEdit runs as a single instance, and from LeanTerm's editor.
+//
+// The new LeanEdit is a process of its own, detached from this one: closing
+// LeanTerm (or the terminal it was started from) does not close it.
 func (es *EditorService) NewWindow() error {
 	exe, err := os.Executable()
 	if err != nil {
 		return err
+	}
+	// On Windows LeanEdit has an executable of its own (its taskbar entry
+	// and icon); leanterm.exe -leanedit is the same editor.
+	if own := filepath.Join(filepath.Dir(exe), "leanedit.exe"); runtime.GOOS == "windows" {
+		if _, err := os.Stat(own); err == nil {
+			exe = own
+		}
 	}
 	args := []string{"--leanedit", "--new-window"}
 	if es.store != nil {
 		args = append(args, "--config-dir="+es.store.ConfigDir())
 	}
 	cmd := exec.Command(exe, args...)
+	if home, err := os.UserHomeDir(); err == nil {
+		cmd.Dir = home // not a folder this process may be holding
+	}
+	detach(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	}

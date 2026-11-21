@@ -1,10 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
+	"strings"
 	"sync"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
@@ -14,10 +20,12 @@ import (
 
 	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/dnd"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/filedialog"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/leanedit"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/prefs"
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/winsys"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/singleinstance"
 )
@@ -38,6 +46,9 @@ type editorWindows struct {
 	closing bool
 	shapers map[string]*text.Shaper
 	prefsW  *app.Window
+	// startToken activates the first window of a standalone LeanEdit (the
+	// desktop's activation token of this process).
+	startToken string
 }
 
 var _ services.EditorWindows = (*editorWindows)(nil)
@@ -57,7 +68,9 @@ func (e *editorWindows) ShowEditor() error {
 	if width < 400 || height < 300 {
 		width, height = 900, 640
 	}
-	w.Option(app.Title("LeanEdit"), app.Size(unit.Dp(width), unit.Dp(height)), app.MinSize(400, 300))
+	// LeanEdit's own identity (taskbar entry, icon), also in LeanTerm's process.
+	w.Option(append([]app.Option{app.Title("LeanEdit"), app.Size(unit.Dp(width), unit.Dp(height)), app.MinSize(400, 300)},
+		winsys.LeanEdit.Options()...)...)
 	ed := leanedit.New(e.svc)
 	ed.Invalidate = w.Invalidate
 	ed.SetTitle = func(s string) { w.Option(app.Title(s)) }
@@ -94,7 +107,8 @@ func (e *editorWindows) ShowEditorPrefs() error {
 		return nil
 	}
 	w := new(app.Window)
-	w.Option(app.Title(services.EditorAppName+" Settings"), app.Size(560, 620), app.MinSize(420, 360))
+	w.Option(append([]app.Option{app.Title(services.EditorAppName + " Settings"), app.Size(560, 620), app.MinSize(420, 360)},
+		winsys.LeanEdit.Options()...)...)
 	p := &prefs.EditorPrefs{
 		Load:  e.svc.GetEditorSettings,
 		Save:  e.svc.SaveEditorSettings,
@@ -124,6 +138,8 @@ func (e *editorWindows) ShowEditorPrefs() error {
 				gtx := app.NewContext(&ops, ev)
 				p.Layout(gtx, th)
 				ev.Frame(gtx.Ops)
+			case app.ViewEvent:
+				winsys.View(winsys.LeanEdit, ev)
 			}
 		}
 	}()
@@ -137,6 +153,17 @@ func (e *editorWindows) CloseEditorPrefs() {
 	e.mu.Unlock()
 	if w != nil {
 		w.Perform(system.ActionClose)
+	}
+}
+
+// activate brings the editor window to the front for the desktop's
+// activation token of a process that handed its files over.
+func (e *editorWindows) activate(token string) {
+	e.mu.Lock()
+	w := e.w
+	e.mu.Unlock()
+	if w != nil {
+		w.Activate(token)
 	}
 }
 
@@ -177,12 +204,20 @@ func (e *editorWindows) shaper(family string) *text.Shaper {
 }
 
 func (e *editorWindows) run(w *app.Window, ed *leanedit.App) {
+	defer crashGuard(e.store.ConfigDir())
 	scheme := e.store.Config().General.ColorScheme
 	th := gtk.New(scheme)
 	var ops op.Ops
 	var size [2]int
+	first := true
+	var dropHWND uintptr
 	for {
 		switch ev := w.Event().(type) {
+		case app.ViewEvent:
+			winsys.View(winsys.LeanEdit, ev)
+			enableWindowsDrop(ev, &dropHWND, func(d dnd.Drop) { e.dropped(d.Paths) })
+		case app.FileDropEvent:
+			e.dropped(ev.Paths)
 		case app.DestroyEvent:
 			if ev.Err != nil {
 				log.Print("LeanEdit window: ", ev.Err)
@@ -215,6 +250,15 @@ func (e *editorWindows) run(w *app.Window, ed *leanedit.App) {
 				ed.Focused()
 			}
 		case app.FrameEvent:
+			if first {
+				// A LeanEdit the user just started comes to the front with
+				// the desktop's token (else Wayland desktops may keep it behind).
+				first = false
+				if t := e.startToken; t != "" {
+					e.startToken = ""
+					go w.Activate(t)
+				}
+			}
 			if s := e.store.Config().General.ColorScheme; s != scheme {
 				scheme = s
 				th.SetScheme(s)
@@ -225,6 +269,20 @@ func (e *editorWindows) run(w *app.Window, ed *leanedit.App) {
 			ev.Frame(gtx.Ops)
 		}
 	}
+}
+
+// dropped opens files dropped on the editor window (folders are skipped).
+func (e *editorWindows) dropped(paths []string) {
+	go func() {
+		for _, p := range paths {
+			if fi, err := os.Stat(p); err != nil || fi.IsDir() {
+				continue
+			}
+			if err := e.svc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
+				log.Print("LeanEdit: ", err)
+			}
+		}
+	}()
 }
 
 // watchEditorEvents connects the event bus to the editor window.
@@ -242,25 +300,35 @@ func (leanEditHost) ChooseFile(d services.FileDialog) (string, error) {
 }
 func (leanEditHost) Quit() { os.Exit(0) }
 
-// runLeanEdit starts only the editor (leanterm -leanedit [files]):
-// no main window and no sessions; closing the window quits. Its settings
-// go straight to config.toml (EditorService standalone).
+// runLeanEdit starts only the editor (leanterm -leanedit [files], or the
+// leanedit executable): no main window and no sessions; closing the window
+// quits. Its settings go straight to config.toml (EditorService standalone).
 //
 // With [editor] single_instance (the default), files go to a LeanEdit that
-// is running already (see internal/singleinstance) and this process exits.
-// newWindow (File → New Window) always opens a window of its own and leaves
-// the lock to the running instance.
-func runLeanEdit(configDir string, files []string, newWindow bool) {
+// is running already (see internal/singleinstance) and this process exits;
+// the desktop's activation token goes along, so that window comes to the
+// front. LeanTerm's own editor window never takes part: a LeanEdit started
+// from the desktop is independent of LeanTerm. newWindow (File → New Window)
+// always opens a window of its own and leaves the lock to the running
+// instance.
+func runLeanEdit(configDir string, args []string, newWindow bool) {
+	winsys.SetProcess(winsys.LeanEdit)
+	token := winsys.StartupToken()
+	files := editorArgs(args)
 	store, err := config.NewStore(config.StoreOptions{ConfigDir: configDir, NoBackup: true})
 	if err != nil {
-		log.Fatal(err)
+		fatalStartup(configDir, err)
 	}
+	defer crashGuard(store.ConfigDir())
+	// A configuration LeanEdit cannot read must not keep it from editing
+	// files: it runs with the defaults then (and does not save over it).
 	if err := store.Load(); err != nil {
-		log.Fatal(err)
+		logStartup(store.ConfigDir(), "LeanEdit: the configuration could not be loaded, using the defaults: "+err.Error())
 	}
 	single := store.Config().Editor.SingleInstance && !newWindow
 	if single {
-		forwarded, err := singleinstance.Forward(store.ConfigDir(), files)
+		winsys.AllowActivation()
+		forwarded, err := singleinstance.ForwardRequest(store.ConfigDir(), singleinstance.Request{Files: files, Activation: token})
 		if err != nil {
 			log.Print("LeanEdit: ", err)
 		}
@@ -275,7 +343,7 @@ func runLeanEdit(configDir string, files []string, newWindow bool) {
 	store.OnReload = func() { bus.Emit(events.SettingsChanged, nil) }
 	host := leanEditHost{}
 	var server *singleinstance.Server
-	ew := &editorWindows{store: store, svc: svc, standalone: true, onExit: func() {
+	ew := &editorWindows{store: store, svc: svc, standalone: true, startToken: token, onExit: func() {
 		if server != nil {
 			_ = server.Close()
 		}
@@ -287,13 +355,14 @@ func runLeanEdit(configDir string, files []string, newWindow bool) {
 	ew.watchEditorEvents(bus)
 	if single {
 		// Later instances hand their files over and exit (on the server's goroutine).
-		server, err = singleinstance.Listen(store.ConfigDir(), func(paths []string) {
-			if len(paths) == 0 {
+		server, err = singleinstance.ListenRequests(store.ConfigDir(), func(r singleinstance.Request) {
+			if len(r.Files) == 0 {
 				_ = svc.ShowWindow()
 			}
-			for _, p := range paths {
+			for _, p := range r.Files {
 				_ = svc.Open(services.EditorFile{Kind: "local", Path: p})
 			}
+			ew.activate(r.Activation)
 		})
 		if err != nil {
 			log.Print("LeanEdit: single instance off: ", err)
@@ -301,19 +370,106 @@ func runLeanEdit(configDir string, files []string, newWindow bool) {
 		}
 	}
 	go func() {
+		defer crashGuard(store.ConfigDir())
 		opened := false
 		for _, f := range files {
-			if abs, err := filepath.Abs(f); err == nil {
-				if err := svc.Open(services.EditorFile{Kind: "local", Path: abs}); err == nil {
-					opened = true
-				}
+			if err := svc.Open(services.EditorFile{Kind: "local", Path: f}); err == nil {
+				opened = true
 			}
 		}
 		if !opened {
 			if err := svc.ShowWindow(); err != nil {
-				log.Fatal(err)
+				fatalStartup(store.ConfigDir(), err)
 			}
 		}
 	}()
 	app.Main()
+}
+
+// isLeanEditExe reports whether this program was started as LeanEdit's own
+// executable (leanedit.exe on Windows, or a leanedit link).
+func isLeanEditExe() bool {
+	name := strings.ToLower(filepath.Base(os.Args[0]))
+	return strings.TrimSuffix(name, ".exe") == "leanedit"
+}
+
+// editorArgs turns LeanEdit's arguments into absolute local paths. Desktops
+// pass paths (%F) or file:// URIs (%U, percent-encoded); empty arguments are
+// skipped, and relative paths are relative to the working folder.
+func editorArgs(args []string) []string {
+	var out []string
+	for _, a := range args {
+		a = strings.TrimSpace(a)
+		if a == "" {
+			continue
+		}
+		if p, ok := fileURIPath(a); ok {
+			a = p
+		} else if strings.Contains(a, "://") {
+			log.Printf("LeanEdit: %s: only local files can be opened", a)
+			continue
+		}
+		if abs, err := filepath.Abs(a); err == nil {
+			a = abs
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// fileURIPath returns the local path of a file:// URI.
+func fileURIPath(s string) (string, bool) {
+	if len(s) < 7 || !strings.EqualFold(s[:7], "file://") {
+		return "", false
+	}
+	u, err := url.Parse(s)
+	if err != nil || u.Path == "" {
+		return "", false
+	}
+	if h := u.Host; h != "" && !strings.EqualFold(h, "localhost") {
+		if name, _ := os.Hostname(); !strings.EqualFold(h, name) {
+			return "", false
+		}
+	}
+	p := u.Path
+	// file:///C:/dir/file on Windows.
+	if runtime.GOOS == "windows" && len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		p = p[1:]
+	}
+	return filepath.FromSlash(p), true
+}
+
+// startupLog is the file in the configuration folder where LeanEdit and
+// LeanTerm note what kept them from starting (a desktop shows no terminal).
+func startupLog(dir string) string { return filepath.Join(dir, "state", "startup.log") }
+
+func logStartup(dir, msg string) {
+	log.Print(msg)
+	if dir == "" {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(startupLog(dir)), 0o700)
+	f, err := os.OpenFile(startupLog(dir), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s %s\n", time.Now().Format(time.RFC3339), msg)
+}
+
+func fatalStartup(dir string, err error) {
+	if dir == "" {
+		dir = config.ResolveConfigDir("")
+	}
+	logStartup(dir, "start failed: "+err.Error())
+	os.Exit(1)
+}
+
+// crashGuard notes a panic of the goroutine it is deferred in, with its
+// stack, in the startup log before the program ends as it would.
+func crashGuard(dir string) {
+	if r := recover(); r != nil {
+		logStartup(dir, fmt.Sprintf("panic: %v\n%s", r, debug.Stack()))
+		panic(r)
+	}
 }
