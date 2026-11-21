@@ -876,13 +876,15 @@ func (a *App) closeTab(id int) bool {
 	return true
 }
 
+// closeAll closes every tab (flows only). The tabs belong to the UI
+// goroutine: their ids are read there (a.mu only guards the queue).
 func (a *App) closeAll() bool {
 	var ids []int
-	a.mu.Lock()
-	for _, t := range a.tabs {
-		ids = append(ids, t.ID)
-	}
-	a.mu.Unlock()
+	a.ui(func() {
+		for _, t := range a.tabs {
+			ids = append(ids, t.ID)
+		}
+	})
 	for _, id := range ids {
 		if !a.closeTab(id) {
 			return false
@@ -891,15 +893,16 @@ func (a *App) closeAll() bool {
 	return true
 }
 
+// closeOtherTabs closes every tab but keepID (flows only).
 func (a *App) closeOtherTabs(keepID int) bool {
 	var ids []int
-	a.mu.Lock()
-	for _, t := range a.tabs {
-		if t.ID != keepID {
-			ids = append(ids, t.ID)
+	a.ui(func() {
+		for _, t := range a.tabs {
+			if t.ID != keepID {
+				ids = append(ids, t.ID)
+			}
 		}
-	}
-	a.mu.Unlock()
+	})
 	for _, id := range ids {
 		if !a.closeTab(id) {
 			return false

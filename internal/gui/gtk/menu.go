@@ -181,7 +181,9 @@ func (m *Menu) update(gtx layout.Context) {
 	}
 
 	if hoveredRow >= 0 {
-		if m.focus != hoveredRow {
+		// The pointer moves the focus when it enters a row; while it rests
+		// there, the keyboard keeps the focus it moved.
+		if m.hovered != hoveredRow+1 {
 			m.focus = hoveredRow
 			m.hovered = hoveredRow + 1
 			if len(m.Items[hoveredRow].Submenu) > 0 {

@@ -77,13 +77,13 @@ The script automatically detects your distribution, installs the `.deb` package 
 Command-line options can be passed after `sh -s --`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.1.2
+curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.1.3
 curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --uninstall
 ```
 
 ### Windows 10 (1809) or later
 
-Download and run `leanterm_2.1.2_windows_amd64_setup.exe` from the [Releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest).
+Download and run `leanterm_2.1.3_windows_amd64_setup.exe` from the [Releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest).
 
 The installer sets up LeanTerm in `C:\Program Files\LeanTerm` and creates Start menu and desktop shortcuts. LeanEdit can also be installed (`leanedit.exe`, with its own taskbar identity and "Open with" context menu entry). *Note: The installer is not code-signed yet, so Windows SmartScreen will ask for confirmation on the first start.*
 
@@ -93,9 +93,9 @@ All packages and their checksums (`SHA256SUMS`) are available on the [Releases p
 
 | File | Description |
 |---|---|
-| `leanterm_2.1.2_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
-| `leanterm_2.1.2_linux_amd64.tar.gz` | Portable archive for other Linux distributions (used by `install.sh`) |
-| `leanterm_2.1.2_windows_amd64_setup.exe` | Windows installer |
+| `leanterm_2.1.3_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
+| `leanterm_2.1.3_linux_amd64.tar.gz` | Portable archive for other Linux distributions (used by `install.sh`) |
+| `leanterm_2.1.3_windows_amd64_setup.exe` | Windows installer |
 
 *Linux runtime requirements:* glibc 2.34 or newer, along with EGL, Wayland, X11 and xkbcommon libraries.
 
