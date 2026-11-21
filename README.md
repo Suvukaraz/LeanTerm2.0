@@ -14,85 +14,172 @@
   <a href="https://github.com/Suvukaraz/LeanTerm2.0/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Suvukaraz/LeanTerm2.0/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
-LeanTerm is written in Go with the [Gio](https://gioui.org) GUI toolkit. It keeps your saved connections in a tree, opens SSH, Telnet and local shells in tabs, browses the files of the remote or local side next to the terminal, and edits remote files directly in its built-in editor, LeanEdit.
+<p align="center">
+  <img src="docs/screenshots/screenshot_01.png" alt="LeanTerm with connections, SFTP browser and remote terminal (Ghostty)" width="920">
+  <br>
+  <em>LeanTerm with connections, SFTP browser and remote terminal (Ghostty)</em>
+</p>
+
+LeanTerm is written in Go with the [Gio](https://gioui.org) GUI toolkit. It keeps your saved connections in an organized tree, opens SSH, Telnet and local shells in tabs or split panes, browses remote (SFTP) or local files side-by-side with the terminal, and edits remote or local files directly in its built-in code editor, LeanEdit.
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/screenshot_01.png" alt="LeanTerm with connections + SFTP browser + remote terminal (Ghostty)" width="900">
+  <br>
+  <b>Figure 1:</b> <em>LeanTerm with connections + SFTP browser + remote terminal (Ghostty)</em>
+</p>
+
+<br>
+
+<p align="center">
+  <img src="docs/screenshots/screenshot_02.png" alt="LeanTerm only with file browser and a local shell (VT terminal)" width="900">
+  <br>
+  <b>Figure 2:</b> <em>LeanTerm only with file browser and a local shell (VT terminal)</em>
+</p>
+
+<br>
+
+<p align="center">
+  <img src="docs/screenshots/screenshot_03.png" alt="LeanEdit with its own source code open" width="900">
+  <br>
+  <b>Figure 3:</b> <em>LeanEdit with its own source code open</em>
+</p>
+
+---
+
+## Features
+
+- **Connections** – SSH (jump hosts, agent, keyboard-interactive and OTP prompts, local, remote and dynamic port forwarding, X11 forwarding), Telnet and local shells, with the protocols implemented in pure Go. No external `ssh` or `sftp` binary is required.
+- **Organization & Tree** – Organize connections in folders with favorites and history, quick connect, bulk edit, Wake-on-LAN, and custom variables and prompts in connection settings.
+- **Terminals** – Tabbed terminals and split panes (vertical and horizontal), find bar, screenshots, and session logs. Choose between LeanTerm's pure Go VT engine or the high-performance Ghostty terminal engine (libghostty-vt). Local shells use PTY on Linux and ConPTY on Windows.
+- **Automation** – Expect-style sequences, pre- and post-connect commands, macros, cluster administration with broadcast input across multiple terminals, and piping/teeing terminal output to files or commands.
+- **File Browser** – SFTP for SSH connections and the local filesystem for local shells: drag and drop (drop files from desktop into target folder, move rows between folders, drag files out to desktop/file manager), transfer queue, directory tracking following the terminal (OSC 7), and one-click opening in editor.
+- **LeanEdit** – Integrated and standalone text & code editor for local and remote files with syntax highlighting, code folding, word completion, Go to Symbol, bookmarks, minimap, and automatic reload on external changes.
+- **Security** – Secrets encrypted with [age](https://age-encryption.org) and stored in the system keyring or behind a master password, KeePassXC integration, and GUI lock screen.
+
+---
 
 ## Installation
 
-**Linux (x86_64)**: one command for Debian, Ubuntu, Fedora, openSUSE, Arch and their derivatives:
+### Linux (x86_64)
+
+One command for Debian, Ubuntu, Fedora, openSUSE, Arch Linux and their derivatives:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh
 ```
 
-The script installs the `.deb` package on Debian-based systems and the release archive (with the libraries it needs) elsewhere. It checks every download against the release checksums. Running it again updates LeanTerm. Options are passed after `sh -s --`:
+The script automatically detects your distribution, installs the `.deb` package on Debian/Ubuntu-based systems and the standalone release archive (with required libraries) elsewhere. Every download is verified against release checksums. Running the command again updates LeanTerm.
+
+Command-line options can be passed after `sh -s --`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.1.0
+curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --version 2.1.1
 curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- --uninstall
 ```
 
-**Windows 10 (1809) or later**: run `leanterm_2.1.0_windows_amd64_setup.exe` from the [releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest). The installer puts LeanTerm into `C:\Program Files\LeanTerm` and adds Start menu and desktop shortcuts; LeanEdit can be selected as well (`leanedit.exe`, with its own taskbar entry and "Open with" entry). The installer is not code-signed yet, so SmartScreen asks for confirmation on the first start.
+### Windows 10 (1809) or later
 
-**Packages** (all on the [releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest), with `SHA256SUMS`):
+Download and run `leanterm_2.1.1_windows_amd64_setup.exe` from the [Releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest).
 
-| File | Contents |
+The installer sets up LeanTerm in `C:\Program Files\LeanTerm` and creates Start menu and desktop shortcuts. LeanEdit can also be installed (`leanedit.exe`, with its own taskbar identity and "Open with" context menu entry). *Note: The installer is not code-signed yet, so Windows SmartScreen will ask for confirmation on the first start.*
+
+### Packages
+
+All packages and their checksums (`SHA256SUMS`) are available on the [Releases page](https://github.com/Suvukaraz/LeanTerm2.0/releases/latest):
+
+| File | Description |
 |---|---|
-| `leanterm_2.1.0_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
-| `leanterm_2.1.0_linux_amd64.tar.gz` | Archive for other distributions, used by `install.sh` |
-| `leanterm_2.1.0_windows_amd64_setup.exe` | Windows installer |
+| `leanterm_2.1.1_amd64.deb` | Debian/Ubuntu package with LeanTerm and LeanEdit |
+| `leanterm_2.1.1_linux_amd64.tar.gz` | Portable archive for other Linux distributions (used by `install.sh`) |
+| `leanterm_2.1.1_windows_amd64_setup.exe` | Windows installer |
 
-The Linux binaries need glibc 2.34 or newer and the EGL, Wayland, X11 and xkbcommon libraries.
+*Linux runtime requirements:* glibc 2.34 or newer, along with EGL, Wayland, X11 and xkbcommon libraries.
 
-## Features
-
-- **Connections** – SSH (jump hosts, agent, keyboard-interactive and OTP prompts, local, remote and dynamic port forwarding, X11 forwarding), Telnet and local shells, with the protocols implemented in Go. No external `ssh` or `sftp` program is needed.
-- **Tree and organisation** – connections in folders with favourites and history, quick connect, bulk edit, Wake-on-LAN, and variables and prompts in connection settings.
-- **Terminals** – tabs and split tabs, a find bar, screenshots and session logs. Local shells use a PTY on Linux and ConPTY on Windows.
-- **Automation** – Expect-style sequences, pre and post commands, macros, clusters with broadcast input, and piping or teeing a terminal's output to a file or command.
-- **File browser** – SFTP for SSH connections and the local file system for local shells, with drag and drop (files from the desktop into the folder under the pointer, rows onto folders to move them, rows out of the window to the desktop or a file manager), a transfer queue, a folder that follows the terminal (OSC 7) and opening files in the editor.
-- **LeanEdit** – the text editor, for local and remote files: syntax highlighting for many languages, code folding, word completion, Go to Symbol, bookmarks, a minimap, and reloading of files changed by other programs. See [LeanEdit](#leanedit).
-- **Security** – secrets are encrypted with [age](https://age-encryption.org) and kept in the system keyring or behind a master password, KeePassXC integration, and a GUI lock.
+---
 
 ## LeanEdit
 
-LeanEdit is the text editor of LeanTerm as an application of its own. It has a menu entry and an icon, is offered in *Open with* for text files and runs independently of LeanTerm:
+LeanEdit is both the integrated editor inside LeanTerm and a full-featured standalone text and code editor application. It has its own desktop launcher, icon, taskbar identity, and file association:
 
 ```sh
-leanedit [file…]        # the same as: leanterm -leanedit [file…]
+leanedit [file…]        # equivalent to: leanterm -leanedit [file…]
 ```
 
-LeanEdit is a separate application in the taskbar (KDE, GNOME and Windows), also when LeanTerm opens it for remote files; files dropped on its window open as tabs. By default LeanEdit runs once: further files open as tabs in the running window, which comes to the front. *File → New Window* opens another window. When the window gets the focus, LeanEdit offers to reload files that were changed or deleted by another program, and saving never overwrites such a change without asking. Started on its own, LeanEdit edits local files and needs no connection.
+<p align="center">
+  <img src="docs/screenshots/screenshot_03.png" alt="LeanEdit with its own source code open" width="880">
+  <br>
+  <em>LeanEdit with its own source code open, featuring tabs, syntax highlighting, and minimap</em>
+</p>
+
+- **Independent Window & Process** – LeanEdit operates as a separate application in taskbars (GNOME, KDE, Windows), even when spawned by LeanTerm for editing remote SFTP files.
+- **Tabs & Drag-and-Drop** – Drop files onto the editor window to open them as new tabs. By default, opening files from the file manager attaches them to the existing running instance and brings it to front. Use *File → New Window* (`Ctrl+Shift+N`) to spawn additional independent windows.
+- **File Watching & Safe Reload** – When the window gains focus, LeanEdit checks whether open files were modified or deleted by another program, prompting to reload without overwriting external edits unintentionally.
+- **Language Features** – Syntax highlighting for major programming and config languages, code folding, word completion, Go to Symbol, custom line endings (LF / CRLF), encodings (UTF-8, UTF-8 with BOM, ISO-8859-1, ISO-8859-15, Windows-1252), minimap, and zoom controls.
+
+---
 
 ## Configuration
 
-Settings are edited in the application and stored as TOML in `config.toml` in the configuration folder: `~/.config/leanterm` on Linux, `%APPDATA%\LeanTerm` on Windows (`--config-dir` chooses another one). The window layout is kept in `state/ui.toml`; passwords are kept separately in the encrypted `secrets.age`. All options with their defaults are listed in [docs/config-reference.md](docs/config-reference.md).
+Settings can be customized directly in the application GUI and are stored in TOML format:
+- **Linux**: `~/.config/leanterm/config.toml`
+- **Windows**: `%APPDATA%\LeanTerm\config.toml`
 
-Start options such as `--start-uuid`, `--start-shell`, `--edit <file>`, `--leanedit` and `--config-dir` are listed by `leanterm --help`.
+The UI window layout and state is saved in `state/ui.toml`. Passwords and sensitive credentials are encrypted with age in `secrets.age`.
+
+For a complete reference of all configuration options, see [docs/config-reference.md](docs/config-reference.md).
+
+Command-line flags (such as `--start-uuid`, `--start-shell`, `--edit <file>`, `--leanedit`, and `--config-dir`) can be viewed with `leanterm --help`.
+
+---
 
 ## Building from source
 
-Requirements: Go 1.26 or newer. On Linux the GUI needs the development packages of Wayland, X11, EGL, GLES, xkbcommon, Xcursor and libffi (Debian/Ubuntu: `sudo apt install libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev`).
+**Requirements**: Go 1.26 or newer. On Linux, GUI compilation requires Wayland, X11, EGL, GLES, xkbcommon, Xcursor and libffi development libraries:
+
+```sh
+# Debian / Ubuntu:
+sudo apt install libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev
+```
+
+### Standard Build (Pure Go VT Engine)
 
 ```sh
 go build -o bin/leanterm ./cmd/leanterm
 ```
 
-Gio and gvcode are vendored with small changes in `third_party/` (see `third_party/gio/LEANTERM.md`): drag and drop from file managers on X11 and Wayland, per-window application ids and icons, and window activation. This build uses LeanTerm's pure Go terminal engine (`vt`). The packages and the CI use the Ghostty terminal core (libghostty-vt) as well, which is built with Zig 0.17.1 and selected with the `ghostty` build tag:
+Gio and gvcode are vendored with custom enhancements in `third_party/` (see `third_party/gio/LEANTERM.md`): file manager drag-and-drop on X11 and Wayland, per-window application IDs and icons, and smooth window activation.
+
+### Ghostty Terminal Core Build
+
+The official release packages and CI also include the libghostty-vt engine, built using Zig 0.17.1 and enabled via the `ghostty` build tag:
 
 ```sh
 build/gio/build-libghostty.sh x86_64-linux-gnu.2.34 "$PWD/ghostty/linux"
 PKG_CONFIG_PATH="$PWD/ghostty/linux/lib/pkgconfig" go build -tags ghostty -o bin/leanterm ./cmd/leanterm
 ```
 
-The script needs Zig 0.17.1 (`pip install ziglang==0.17.1` provides it) and clones the Ghostty source at the commit the bindings are built against. Packages are built by the scripts in `build/`, with the version from the `VERSION` file unless one is given:
+### Packaging Scripts
+
+Packaging scripts in `build/` create release packages using the version from `VERSION`:
 
 | Package | Command |
 |---|---|
-| Debian package | `build/package-deb.sh` |
-| Linux archive | `build/package-tarball.sh` |
-| Windows installer with `leanterm.exe` and `leanedit.exe` (cross-compiled from Linux; needs `nsis`, `go-winres` and, for the Ghostty engine, Zig and the Windows libghostty; `LEANTERM_TAGS=` builds without them) | `build/package-windows.sh` |
+| Debian / Ubuntu `.deb` | `build/package-deb.sh` |
+| Linux `.tar.gz` archive | `build/package-tarball.sh` |
+| Windows installer (`.exe`) | `build/package-windows.sh` *(cross-compiled from Linux; requires `nsis` and `go-winres`)* |
 
-Tests: `go test ./...` (or `make test`). `make build` builds `bin/leanterm` without libghostty.
+### Testing
+
+```sh
+go test ./...        # or make test
+make build           # builds bin/leanterm without libghostty
+```
+
+---
 
 ## License
 

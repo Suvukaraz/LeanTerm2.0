@@ -67,8 +67,8 @@ type Menu struct {
 func (m *Menu) Open(pos image.Point) {
 	m.pos, m.open, m.focus, m.sub = pos, true, -1, nil
 	m.scroll, m.opening, m.dismissed, m.up = 0, true, false, false
-	// hovered stays: a pointer still resting on a row (the one that opened
-	// the menu again) has not entered it.
+	m.subIndex = -1
+	m.hovered = 0
 	m.grab = true
 }
 
@@ -80,7 +80,12 @@ func (m *Menu) OpenUp(pos image.Point) {
 }
 
 // Close hides the menu.
-func (m *Menu) Close() { m.open, m.sub = false, nil }
+func (m *Menu) Close() {
+	m.open, m.sub = false, nil
+	m.subIndex = -1
+	m.focus = -1
+	m.hovered = 0
+}
 
 // Opened reports whether the menu is shown.
 func (m *Menu) Opened() bool { return m.open }
@@ -122,7 +127,7 @@ func (m *Menu) openSub(i int) {
 	if m.sub != nil && m.subIndex == i {
 		return
 	}
-	m.sub = &Menu{Items: m.Items[i].Submenu, focus: -1, open: true}
+	m.sub = &Menu{Items: m.Items[i].Submenu, focus: -1, open: true, subIndex: -1}
 	m.subIndex = i
 }
 
@@ -162,12 +167,40 @@ func (m *Menu) update(gtx layout.Context) {
 		m.clicks = make([]widget.Clickable, len(m.Items))
 	}
 	m.scrollEvents(gtx)
+
+	hoveredRow := -1
 	for i := range m.clicks {
 		if m.clicks[i].Clicked(gtx) && m.selectable(i) {
 			m.activate(i)
 			gtx.Execute(key.FocusCmd{Tag: &m.tag})
+			return
+		}
+		if m.clicks[i].Hovered() && m.selectable(i) {
+			hoveredRow = i
 		}
 	}
+
+	if hoveredRow >= 0 {
+		if m.focus != hoveredRow {
+			m.focus = hoveredRow
+			m.hovered = hoveredRow + 1
+			if len(m.Items[hoveredRow].Submenu) > 0 {
+				m.openSub(hoveredRow)
+			} else {
+				m.sub = nil
+				m.subIndex = -1
+			}
+			gtx.Execute(op.InvalidateCmd{})
+		}
+	} else if m.sub != nil && m.sub.Opened() {
+		// Mouse might be over the submenu or transitioning: keep parent item focused.
+		m.focus = m.subIndex
+	} else if m.hovered != 0 {
+		m.hovered = 0
+		m.focus = -1
+		gtx.Execute(op.InvalidateCmd{})
+	}
+
 	if !m.open {
 		return
 	}
@@ -219,6 +252,7 @@ func (m *Menu) update(gtx layout.Context) {
 				target = target.sub
 			}
 			target.key(e.Name, m)
+			gtx.Execute(op.InvalidateCmd{})
 		}
 	}
 }
@@ -245,7 +279,9 @@ func (m *Menu) scrollEvents(gtx layout.Context) {
 			m.scroll = max(0, min(m.maxScrl, m.scroll+int(e.Scroll.Y)))
 			if m.sub != nil {
 				m.sub = nil // its row moved
+				m.subIndex = -1
 			}
+			gtx.Execute(op.InvalidateCmd{})
 		}
 	}
 }
@@ -257,6 +293,10 @@ func (m *Menu) key(name key.Name, root *Menu) {
 			i = (i + len(m.Items)) % len(m.Items)
 			if m.selectable(i) {
 				m.focus, m.ensure = i, true
+				if m.sub != nil && m.subIndex != i {
+					m.sub = nil
+					m.subIndex = -1
+				}
 				return
 			}
 		}
@@ -271,6 +311,7 @@ func (m *Menu) key(name key.Name, root *Menu) {
 		for p := root; p.sub != nil; p = p.sub {
 			if p.sub == m {
 				p.sub = nil
+				p.subIndex = -1
 				return
 			}
 		}
@@ -304,6 +345,7 @@ func (m *Menu) key(name key.Name, root *Menu) {
 		for p := root; p.sub != nil; p = p.sub {
 			if p.sub == m {
 				p.sub = nil
+				p.subIndex = -1
 				break
 			}
 		}
@@ -426,24 +468,9 @@ func (m *Menu) draw(gtx layout.Context, th *Theme, anchor image.Rectangle, bound
 // label, the shortcut (0.85em, muted) and the submenu arrow.
 func (m *Menu) row(gtx layout.Context, th *Theme, i int, it MenuItem) layout.Dimensions {
 	c := &m.clicks[i]
-	// The pointer moves the focus when it enters a row; while it rests,
-	// the keyboard keeps the focus it moved.
-	switch h := c.Hovered(); {
-	case h && m.hovered != i+1:
-		m.hovered = i + 1
-		if m.selectable(i) {
-			m.focus = i
-			if len(it.Submenu) > 0 {
-				m.openSub(i)
-			} else {
-				m.sub = nil
-			}
-		}
-	case !h && m.hovered == i+1:
-		m.hovered = 0
-	}
-	hot := m.selectable(i) && (m.focus == i || (m.sub != nil && m.subIndex == i))
+	hot := m.selectable(i) && m.focus == i
 	return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		pointer.CursorDefault.Add(gtx.Ops)
 		return m.rowContent(gtx, th, i, it, hot, false)
 	})
 }

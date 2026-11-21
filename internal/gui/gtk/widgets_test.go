@@ -124,6 +124,18 @@ func TestComboOpensAndPicks(t *testing.T) {
 	if !c.open {
 		t.Fatal("list not open")
 	}
+	// Hovering row 1 (Telnet) should update c.hovered to 1
+	u.pointer(pointer.Move, 20, 26+2+20+10, 0)
+	u.frame(w)
+	if c.hovered != 1 {
+		t.Fatalf("expected hovered 1, got %d", c.hovered)
+	}
+	// Hovering row 2 (SFTP) should update c.hovered to 2
+	u.pointer(pointer.Move, 20, 26+2+40+10, 0)
+	u.frame(w)
+	if c.hovered != 2 {
+		t.Fatalf("expected hovered 2, got %d", c.hovered)
+	}
 	// The list starts below the 26px box; rows are about 20px.
 	u.click(w, 10, 26+2+20+10)
 	if c.Value != "telnet" || !c.Changed() || c.open {
@@ -213,6 +225,67 @@ func TestMenuKeyboardMouseAndSubmenu(t *testing.T) {
 	u.click(w, 700, 500)
 	if m.Opened() {
 		t.Fatal("a click outside did not close")
+	}
+}
+
+func TestMenuHoverSingleHighlight(t *testing.T) {
+	u := newUI(t)
+	m := Menu{Items: []MenuItem{
+		{ID: "a", Label: "Connect"},
+		{Separator: true},
+		{ID: "b", Label: "Disabled", Disabled: true},
+		{ID: "c", Label: "Edit"},
+		{ID: "d", Label: "More", Submenu: []MenuItem{{ID: "e", Label: "Sub"}}},
+	}}
+	w := func(gtx layout.Context) layout.Dimensions { return m.Layout(gtx, u.th) }
+	m.Open(image.Pt(10, 10))
+	u.frame(w)
+
+	// Move mouse over row 0 ("Connect", at y = 10 + 4 + 12)
+	u.pointer(pointer.Move, 60, 10+4+12, 0)
+	u.frame(w)
+	if m.focus != 0 {
+		t.Fatalf("expected row 0 focused on hover, got %d", m.focus)
+	}
+
+	// Move mouse down over row 3 ("Edit", at y = 10 + 4 + 24 + 9 + 24 + 12 = 83)
+	// Using m.rowTop[3] + 12
+	yRow3 := float32(10 + m.rowTop[3] + 6)
+	u.pointer(pointer.Move, 60, yRow3, 0)
+	u.frame(w)
+	if m.focus != 3 {
+		t.Fatalf("expected row 3 focused on hover, got %d", m.focus)
+	}
+	if m.sub != nil {
+		t.Fatalf("expected no submenu on row 3, but got %v", m.sub)
+	}
+
+	// Move mouse over row 4 ("More" with submenu)
+	yRow4 := float32(10 + m.rowTop[4] + 6)
+	u.pointer(pointer.Move, 60, yRow4, 0)
+	u.frame(w)
+	if m.focus != 4 {
+		t.Fatalf("expected row 4 focused on hover, got %d", m.focus)
+	}
+	if m.sub == nil || m.subIndex != 4 {
+		t.Fatalf("expected submenu open for row 4, got sub=%v, subIndex=%d", m.sub, m.subIndex)
+	}
+
+	// Move mouse back up to row 0: submenu must close, only row 0 focused!
+	u.pointer(pointer.Move, 60, 10+4+12, 0)
+	u.frame(w)
+	if m.focus != 0 {
+		t.Fatalf("expected row 0 focused on hover back, got %d", m.focus)
+	}
+	if m.sub != nil {
+		t.Fatalf("expected submenu closed when moving to row 0, but still open")
+	}
+
+	// Move mouse outside menu: focus should clear!
+	u.pointer(pointer.Move, 500, 500, 0)
+	u.frame(w)
+	if m.focus != -1 {
+		t.Fatalf("expected focus cleared (-1) when mouse left menu, got %d", m.focus)
 	}
 }
 

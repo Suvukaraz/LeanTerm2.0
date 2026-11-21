@@ -31,6 +31,7 @@ type Combo struct {
 	open    bool
 	changed bool
 	hover   Hover
+	hovered int // -1: none, 0+: hovered item index
 	dismiss int // tag for clicks outside the open list
 }
 
@@ -76,6 +77,9 @@ func (c *Combo) Layout(gtx layout.Context, th *Theme, opts []ComboOption, disabl
 	}
 	if c.click.Clicked(gtx) {
 		c.open = !c.open
+		if c.open {
+			c.hovered = -1
+		}
 	}
 	for {
 		ev, ok := gtx.Event(
@@ -177,28 +181,43 @@ func (th *Theme) comboList(gtx layout.Context, c *Combo, opts []ComboOption, wid
 	defer offset(gtx, 0, top).Pop()
 	gtx.Constraints.Min = image.Pt(width, 0)
 	gtx.Constraints.Max.X = max(width, gtx.Dp(120))
+
+	hovered := -1
+	for i := range opts {
+		if i < len(c.items) && c.items[i].Hovered() {
+			hovered = i
+		}
+	}
+	if hovered != c.hovered {
+		c.hovered = hovered
+		gtx.Execute(op.InvalidateCmd{})
+	}
+
 	call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
 		var rows []layout.FlexChild
 		for i, o := range opts {
 			i, o := i, o
 			rows = append(rows, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return c.items[i].Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					selected := false
+					if hovered >= 0 {
+						selected = (i == hovered)
+					} else {
+						selected = (o.Value == c.Value)
+					}
+
 					fg := p.TextColor
+					if selected {
+						fg = p.SelectedFg
+					}
 					call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
 						return layout.Inset{Left: 7, Right: 7, Top: 2, Bottom: 2}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							gtx.Constraints.Min.X = gtx.Constraints.Max.X
 							return Text{S: o.Label, Color: fg, MaxLines: 1}.Layout(gtx, th)
 						})
 					})
-					if c.items[i].Hovered() || o.Value == c.Value {
+					if selected {
 						FillRect(gtx, image.Rectangle{Max: d.Size}, p.SelectedBg)
-						fg = p.SelectedFg
-						call, _ = record(gtx, func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{Left: 7, Right: 7, Top: 2, Bottom: 2}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								gtx.Constraints.Min.X = gtx.Constraints.Max.X
-								return Text{S: o.Label, Color: fg, MaxLines: 1}.Layout(gtx, th)
-							})
-						})
 					}
 					call.Add(gtx.Ops)
 					pointer.CursorPointer.Add(gtx.Ops)

@@ -3,13 +3,13 @@ Unicode true
 ####
 ## Installer of LeanTerm (cmd/leanterm) for Windows, amd64.
 ## build/package-windows.sh calls it with:
-##   makensis -DINFO_PRODUCTVERSION=2.1.0 -DARG_BINARY=leanterm.exe -DARG_LEANEDIT=leanedit.exe -DOUTFILE=setup.exe gio.nsi
+##   makensis -DINFO_PRODUCTVERSION=2.1.1 -DARG_BINARY=leanterm.exe -DARG_LEANEDIT=leanedit.exe -DOUTFILE=setup.exe gio.nsi
 ## The installer is per machine (Program Files, administrator rights). The
 ## uninstall key keeps its name, so an update replaces an installed version.
 ####
 
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "2.1.0"
+    !define INFO_PRODUCTVERSION "2.1.1"
 !endif
 !ifndef ARG_BINARY
     !error "ARG_BINARY must name the leanterm.exe to install"
