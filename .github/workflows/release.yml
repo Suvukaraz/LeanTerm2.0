@@ -50,12 +50,14 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
 
-      - name: System packages (Gio headers, NSIS)
+      # The fonts are those of the CI: the font tests need a CJK fallback.
+      - name: System packages (Gio headers, NSIS, fonts for the tests)
         if: steps.check.outputs.skip != 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq nsis libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev \
-            libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev
+            libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev \
+            fonts-dejavu-core fonts-wqy-zenhei fonts-noto-color-emoji
 
       - name: Zig
         if: steps.check.outputs.skip != 'true'
