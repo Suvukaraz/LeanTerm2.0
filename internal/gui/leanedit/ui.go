@@ -54,6 +54,11 @@ type uiState struct {
 	menuDefs  []topMenu
 	popup     gtk.Menu
 	popupDefs []item
+	ctxMenu   gtk.Menu
+	ctxDefs   []item
+
+	tabBarTag int
+	bodyTag   int
 
 	tools    [11]widget.Clickable
 	tabClick map[int]*widget.Clickable
@@ -65,9 +70,13 @@ type uiState struct {
 	newB, openB widget.Clickable
 	sb          [6]widget.Clickable
 
-	titleW  map[int]int // menu title widths
-	barH    int         // menu bar height
-	pointer image.Point // last pointer position (popups open there)
+	titleW   map[int]int // menu title widths
+	barH     int         // menu bar height
+	toolH    int         // tool bar height
+	tabH     int         // tab bar height
+	sbH      int         // status bar height
+	tabSizes map[int]int // tab widths
+	pointer  image.Point // last pointer position (popups open there)
 
 	qdlg  gtk.Dialog
 	qbtns []widget.Clickable
@@ -157,11 +166,18 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 		layout.Rigid(a.menuBar),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if !a.toolbar {
+				u.toolH = 0
 				return layout.Dimensions{}
 			}
 			return a.toolBar(gtx)
 		}),
-		layout.Rigid(a.tabBar),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if len(a.tabs) == 0 {
+				u.tabH = 0
+				return layout.Dimensions{}
+			}
+			return a.tabBar(gtx)
+		}),
 		layout.Flexed(1, a.body),
 		layout.Rigid(a.statusBar),
 	)
@@ -185,6 +201,11 @@ func (a *App) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 		if u.popup.Dismissed() && u.popupBtn >= 0 && u.sb[u.popupBtn].Pressed() {
 			u.swallowSB = u.popupBtn
 		}
+		u.restoreFocus()
+	}
+	ctxWas := u.ctxMenu.Opened()
+	u.ctxMenu.Layout(gtx, th)
+	if ctxWas && !u.ctxMenu.Opened() {
 		u.restoreFocus()
 	}
 	if a.quick.open {
@@ -229,8 +250,72 @@ func (a *App) readPointer(gtx layout.Context) {
 		}
 		if e, ok := ev.(pointer.Event); ok {
 			u.pointer = e.Position.Round()
+			if e.Kind == pointer.Press && e.Buttons.Contain(pointer.ButtonSecondary) {
+				a.handleRightClick(gtx, u.pointer)
+			}
 		}
 	}
+}
+
+func (a *App) handleRightClick(gtx layout.Context, pos image.Point) {
+	u := &a.ui_
+	tabTop := u.barH + u.toolH
+	tabBot := tabTop + u.tabH
+	editorBot := gtx.Constraints.Max.Y - u.sbH
+	if editorBot <= 0 {
+		editorBot = 640 - 24
+	}
+
+	switch {
+	case len(a.tabs) > 0 && pos.Y >= tabTop && pos.Y < tabBot:
+		tab := a.tabAt(pos.X)
+		if tab != nil {
+			a.activate(tab.ID)
+			a.openContextMenu(pos, a.tabContextMenuItems(tab))
+		} else {
+			a.openContextMenu(pos, a.tabBarContextMenuItems())
+		}
+	case pos.Y >= tabBot && pos.Y < editorBot:
+		t := a.Active()
+		if t != nil && t.ready {
+			gtx.Execute(key.FocusCmd{Tag: t.ed})
+			if t.ed.SelectedText() == "" {
+				editorTop := tabBot
+				if a.search.open {
+					editorTop += gtx.Dp(36)
+				}
+				if a.gotoLn.open {
+					editorTop += gtx.Dp(36)
+				}
+				textY := pos.Y - editorTop
+				textX := pos.X - t.ed.GutterWidth()
+				if textX >= 0 && textY >= 0 {
+					t.ed.TextView().MoveCoord(image.Pt(textX, textY))
+				}
+			}
+			a.openContextMenu(pos, a.editorContextMenuItems(t))
+		} else if len(a.tabs) == 0 && a.ready {
+			a.openContextMenu(pos, a.placeholderContextMenuItems())
+		}
+	case len(a.tabs) == 0 && a.ready && pos.Y >= u.barH+u.toolH && pos.Y < editorBot:
+		a.openContextMenu(pos, a.placeholderContextMenuItems())
+	}
+}
+
+func (a *App) tabAt(x int) *Tab {
+	u := &a.ui_
+	curX := 0
+	for _, t := range a.tabs {
+		w := u.tabSizes[t.ID]
+		if w <= 0 {
+			w = 100
+		}
+		if x >= curX && x < curX+w {
+			return t
+		}
+		curX += w
+	}
+	return nil
 }
 
 // ---- menu bar ------------------------------------------------------
@@ -247,6 +332,11 @@ func (a *App) handleMenus(gtx layout.Context) {
 	}
 	if id, ok := u.popup.Activated(); ok {
 		if it := findItem(u.popupDefs, id); it != nil && it.action != nil && !it.disabled {
+			a.menuAction(gtx, it.action)
+		}
+	}
+	if id, ok := u.ctxMenu.Activated(); ok {
+		if it := findItem(u.ctxDefs, id); it != nil && it.action != nil && !it.disabled {
 			a.menuAction(gtx, it.action)
 		}
 	}
@@ -308,6 +398,8 @@ func (a *App) menuButton(gtx layout.Context, i int) layout.Dimensions {
 		if def.action != nil {
 			return
 		}
+		u.ctxMenu.Close()
+		u.popup.Close()
 		u.menuOpen, u.menuShown = i, i
 		u.menu.Items = toGtk(def.items, "")
 		// The menu opens below the button (window coordinates of the bar).
@@ -428,6 +520,7 @@ func (a *App) toolBar(gtx layout.Context) layout.Dimensions {
 	gtk.FillRect(gtx, image.Rectangle{Max: d.Size}, pal.BgColor)
 	gtk.FillRect(gtx, image.Rect(0, d.Size.Y-gtx.Dp(1), d.Size.X, d.Size.Y), pal.BorderColor)
 	call.Add(gtx.Ops)
+	u.toolH = d.Size.Y
 	return d
 }
 
@@ -475,6 +568,7 @@ func (a *App) tabBar(gtx layout.Context) layout.Dimensions {
 	gtk.FillRect(gtx, image.Rect(0, 0, d.Size.X, h), pal.HeaderBg)
 	call.Add(gtx.Ops)
 	gtk.FillRect(gtx, image.Rect(0, h-gtx.Dp(1), d.Size.X, h), pal.BorderColor)
+	u.tabH = h
 	return layout.Dimensions{Size: image.Pt(d.Size.X, h)}
 }
 
@@ -495,7 +589,7 @@ func (a *App) tabLayout(gtx layout.Context, t *Tab) layout.Dimensions {
 	if active {
 		fg = pal.FgColor
 	}
-	return c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	dims := c.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		m := op.Record(gtx.Ops)
 		// .editor-tab: padding 4px 6px 4px 10px, gap 5px, max-width 240px.
 		d := layout.Inset{Top: 4, Bottom: 4, Left: 10, Right: 6}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -535,11 +629,20 @@ func (a *App) tabLayout(gtx layout.Context, t *Tab) layout.Dimensions {
 		gtk.FillRect(gtx, image.Rect(size.X-gtx.Dp(1), 0, size.X, size.Y), pal.BorderColor)
 		area := clip.Rect{Max: size}.Push(gtx.Ops)
 		hv.Add(gtx)
-		event.Op(gtx.Ops, mid)
 		area.Pop()
 		call.Add(gtx.Ops)
 		return layout.Dimensions{Size: size}
 	})
+	pass := pointer.PassOp{}.Push(gtx.Ops)
+	area := clip.Rect{Max: dims.Size}.Push(gtx.Ops)
+	event.Op(gtx.Ops, mid)
+	area.Pop()
+	pass.Pop()
+	if u.tabSizes == nil {
+		u.tabSizes = map[int]int{}
+	}
+	u.tabSizes[t.ID] = dims.Size.X
+	return dims
 }
 
 // tabTooltip is a tab's full path (and host of a remote file).
@@ -641,6 +744,26 @@ func (a *App) body(gtx layout.Context) layout.Dimensions {
 			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{}.Layout(gtx,
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						for {
+							ev, ok := gtx.Event(pointer.Filter{Target: &t.bodyTag, Kinds: pointer.Press})
+							if !ok {
+								break
+							}
+							if e, ok := ev.(pointer.Event); ok && e.Buttons.Contain(pointer.ButtonSecondary) {
+								gtx.Execute(key.FocusCmd{Tag: t.ed})
+								if t.ed.SelectedText() == "" {
+									textX := int(e.Position.X) - t.ed.GutterWidth()
+									if textX >= 0 {
+										t.ed.TextView().MoveCoord(image.Pt(textX, int(e.Position.Y)))
+									}
+								}
+								a.openContextMenu(u.pointer, a.editorContextMenuItems(t))
+							}
+						}
+						defer pointer.PassOp{}.Push(gtx.Ops).Pop()
+						defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+						event.Op(gtx.Ops, &t.bodyTag)
+
 						if t.layout(gtx, sh, th) {
 							t.dirtyAt = gtx.Now
 							a.recordEdit(t)
@@ -659,6 +782,19 @@ func (a *App) body(gtx layout.Context) layout.Dimensions {
 		)
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	case len(a.tabs) == 0 && a.ready:
+		for {
+			ev, ok := gtx.Event(pointer.Filter{Target: &u.bodyTag, Kinds: pointer.Press})
+			if !ok {
+				break
+			}
+			if e, ok := ev.(pointer.Event); ok && e.Buttons.Contain(pointer.ButtonSecondary) {
+				a.openContextMenu(u.pointer, a.placeholderContextMenuItems())
+			}
+		}
+		defer pointer.PassOp{}.Push(gtx.Ops).Pop()
+		defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+		event.Op(gtx.Ops, &u.bodyTag)
+
 		if u.newB.Clicked(gtx) {
 			a.NewDocument()
 		}
@@ -807,16 +943,31 @@ func (a *App) statusBar(gtx layout.Context) layout.Dimensions {
 	gtk.FillRect(gtx, image.Rectangle{Max: d.Size}, pal.HeaderBg)
 	gtk.FillRect(gtx, image.Rect(0, 0, d.Size.X, gtx.Dp(1)), pal.BorderColor)
 	call.Add(gtx.Ops)
+	u.sbH = d.Size.Y
 	return d
 }
 
 // openPopup opens a menu where the pointer is (status bar buttons).
 func (a *App) openPopup(items []item) {
 	u := &a.ui_
+	u.ctxMenu.Close()
+	u.menuOpen = -1
+	u.menu.Close()
 	u.popupDefs = items
 	u.popup.Items = toGtk(items, "")
 	// Above the status bar, from where it was clicked (as KDE's do).
 	u.popup.OpenUp(u.pointer)
+}
+
+// openContextMenu opens a context menu at pos (window coordinates).
+func (a *App) openContextMenu(pos image.Point, items []item) {
+	u := &a.ui_
+	u.menuOpen = -1
+	u.menu.Close()
+	u.popup.Close()
+	u.ctxDefs = items
+	u.ctxMenu.Items = toGtk(items, "")
+	u.ctxMenu.Open(pos)
 }
 
 // ---- questions -------------------------------------------------------------------------------

@@ -228,6 +228,12 @@ func (a *App) menus() []topMenu {
 			{label: "Reload with Encoding", disabled: !hasFile, sub: a.encodingItems(true)},
 			sep(),
 			{label: "Close", icon: iconClose, shortcut: "Ctrl+W", disabled: t == nil, action: act(a.closeActive)},
+			{label: "Close Others", disabled: len(a.tabs) <= 1, action: act(func() {
+				if cur := a.Active(); cur != nil {
+					id := cur.ID
+					a.flow(func() { a.closeOtherTabs(id) })
+				}
+			})},
 			{label: "Close All", disabled: len(a.tabs) == 0, action: act(func() { a.flow(func() { a.closeAll() }) })},
 			sep(),
 			{label: "Quit Editor", icon: iconQuit, shortcut: "Ctrl+Q", action: act(a.RequestClose)},
@@ -359,6 +365,85 @@ func (a *App) shortcuts(gtx layout.Context) {
 				s.run(gtx)
 			}
 		}
+	}
+}
+
+// ---- context menus -------------------------------------------------------------------------------
+
+func (a *App) editorContextMenuItems(t *Tab) []item {
+	hasDoc := t != nil && t.ready
+	hasSel := hasDoc && t.ed.SelectedText() != ""
+	readOnly := hasDoc && t.ed.ReadOnly()
+	act := func(fn func()) func(layout.Context) { return func(layout.Context) { fn() } }
+	ed := func(fn func(t *Tab)) func(layout.Context) { return func(layout.Context) { a.run(fn) } }
+
+	return []item{
+		{label: "Undo", icon: iconUndo, shortcut: "Ctrl+Z", disabled: !hasDoc || readOnly, action: ed(func(t *Tab) { t.ed.Undo() })},
+		{label: "Redo", icon: iconRedo, shortcut: "Ctrl+Shift+Z", disabled: !hasDoc || readOnly, action: ed(func(t *Tab) { t.ed.Redo() })},
+		sep(),
+		{label: "Cut", icon: iconCut, shortcut: "Ctrl+X", disabled: !hasSel || readOnly, action: func(gtx layout.Context) { a.copySelection(gtx, true) }},
+		{label: "Copy", icon: iconCopy, shortcut: "Ctrl+C", disabled: !hasSel, action: func(gtx layout.Context) { a.copySelection(gtx, false) }},
+		{label: "Paste", icon: iconPaste, shortcut: "Ctrl+V", disabled: !hasDoc || readOnly, action: a.paste},
+		{label: "Delete", shortcut: "Del", disabled: !hasSel || readOnly, action: ed(func(t *Tab) {
+			t.ed.Delete(1)
+			a.recordEdit(t)
+			a.markDirty(t)
+		})},
+		sep(),
+		{label: "Select All", shortcut: "Ctrl+A", disabled: !hasDoc, action: act(func() { a.run(func(t *Tab) { t.setSel(Sel{0, t.ed.Len()}) }) })},
+		sep(),
+		{label: "Find…", icon: iconFind, shortcut: "Ctrl+F", disabled: !hasDoc, action: a.openSearch},
+		{label: "Replace…", icon: iconEdit, shortcut: "Ctrl+R", disabled: !hasDoc || readOnly, action: a.openSearch},
+		{label: "Go to Line…", shortcut: "Ctrl+G", disabled: !hasDoc, action: act(a.openGotoLine)},
+		sep(),
+		{label: "Highlighting", disabled: !hasDoc, sub: a.languageItems()},
+		{label: "Word Wrap", checked: a.wrap(), action: func(layout.Context) { v := !a.wrap(); a.wrapOverride = &v }},
+	}
+}
+
+func (a *App) tabContextMenuItems(t *Tab) []item {
+	if t == nil {
+		return a.tabBarContextMenuItems()
+	}
+	id := t.ID
+	hasFile := t.File != nil
+	act := func(fn func()) func(layout.Context) { return func(layout.Context) { fn() } }
+	items := []item{
+		{label: "Close", icon: iconClose, shortcut: "Ctrl+W", action: act(func() { a.flow(func() { a.closeTab(id) }) })},
+		{label: "Close Other Tabs", disabled: len(a.tabs) <= 1, action: act(func() { a.flow(func() { a.closeOtherTabs(id) }) })},
+		{label: "Close All Tabs", action: act(func() { a.flow(func() { a.closeAll() }) })},
+		sep(),
+		{label: "Save", icon: iconSave, shortcut: "Ctrl+S", disabled: !t.Dirty && hasFile, action: act(func() { a.flow(func() { a.saveTab(id, false) }) })},
+		{label: "Save As…", icon: iconSaveAs, shortcut: "Ctrl+Shift+S", action: act(func() { a.flow(func() { a.saveTabAs(id) }) })},
+	}
+	if hasFile {
+		path := t.File.Path
+		items = append(items,
+			sep(),
+			item{label: "Copy Path", icon: iconCopy, action: func(gtx layout.Context) {
+				gtx.Execute(clipboard.WriteCmd{Type: "application/text", Data: readCloser(path)})
+			}},
+			item{label: "Reload", icon: iconRefresh, shortcut: "F5", action: act(func() { a.flow(func() { a.reloadTab(id, "") }) })},
+		)
+	}
+	return items
+}
+
+func (a *App) tabBarContextMenuItems() []item {
+	act := func(fn func()) func(layout.Context) { return func(layout.Context) { fn() } }
+	return []item{
+		{label: "New Document", icon: iconNew, shortcut: "Ctrl+N", action: act(a.NewDocument)},
+		{label: "Open File…", icon: iconOpen, shortcut: "Ctrl+O", action: act(a.ChooseAndOpen)},
+		sep(),
+		{label: "Close All Tabs", disabled: len(a.tabs) == 0, action: act(func() { a.flow(func() { a.closeAll() }) })},
+	}
+}
+
+func (a *App) placeholderContextMenuItems() []item {
+	act := func(fn func()) func(layout.Context) { return func(layout.Context) { fn() } }
+	return []item{
+		{label: "New Document", icon: iconNew, shortcut: "Ctrl+N", action: act(a.NewDocument)},
+		{label: "Open File…", icon: iconOpen, shortcut: "Ctrl+O", action: act(a.ChooseAndOpen)},
 	}
 }
 

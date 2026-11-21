@@ -878,11 +878,28 @@ func (a *App) closeTab(id int) bool {
 
 func (a *App) closeAll() bool {
 	var ids []int
-	a.ui(func() {
-		for _, t := range a.tabs {
+	a.mu.Lock()
+	for _, t := range a.tabs {
+		ids = append(ids, t.ID)
+	}
+	a.mu.Unlock()
+	for _, id := range ids {
+		if !a.closeTab(id) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *App) closeOtherTabs(keepID int) bool {
+	var ids []int
+	a.mu.Lock()
+	for _, t := range a.tabs {
+		if t.ID != keepID {
 			ids = append(ids, t.ID)
 		}
-	})
+	}
+	a.mu.Unlock()
 	for _, id := range ids {
 		if !a.closeTab(id) {
 			return false

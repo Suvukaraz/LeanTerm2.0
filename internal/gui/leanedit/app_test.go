@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"gioui.org/f32"
 	"gioui.org/io/input"
+	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
@@ -148,6 +150,13 @@ func (h *harness) frame() {
 	gtx := layout.Context{Ops: &h.ops, Metric: unit.Metric{PxPerDp: 1, PxPerSp: 1}, Constraints: layout.Constraints{Max: image.Pt(900, 640)}, Source: h.r.Source(), Now: h.now}
 	h.a.Layout(gtx, h.th)
 	h.r.Frame(&h.ops)
+}
+
+func (h *harness) press(x, y float32, b pointer.Buttons) {
+	t := time.Duration(h.now.UnixNano())
+	h.r.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Position: f32.Pt(x, y), Time: t})
+	h.r.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Position: f32.Pt(x, y), Buttons: b, Time: t})
+	h.frame()
 }
 
 // until draws frames until ok holds (flows run in goroutines).
@@ -401,4 +410,89 @@ func TestCommandsOnTheEditor(t *testing.T) {
 	h.a.search.open, h.a.gotoLn.open, h.a.quick.open = true, true, true
 	h.frame()
 	h.frame()
+}
+
+func TestContextMenuInLeanEdit(t *testing.T) {
+	svc := newFake()
+	h := newHarness(t, svc)
+	h.frame()
+
+	// 1. Placeholder context menu (no documents open)
+	h.press(300, 200, pointer.ButtonSecondary)
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("placeholder context menu not opened")
+	}
+	phFound := map[string]bool{}
+	for _, it := range h.a.ui_.ctxDefs {
+		phFound[it.label] = true
+	}
+	if !phFound["New Document"] || !phFound["Open File…"] {
+		t.Errorf("placeholder context menu missing New/Open: %v", phFound)
+	}
+
+	h.a.ui_.ctxMenu.Close()
+	h.frame()
+
+	// 2. Open a document and test editor context menu
+	h.a.NewDocument()
+	tab := h.a.Active()
+	tab.ed.SetText("hello world leanedit")
+	h.frame()
+
+	// Right click in editor area
+	h.press(300, 200, pointer.ButtonSecondary)
+	t.Logf("ctxMenu opened: %v, items: %d", h.a.ui_.ctxMenu.Opened(), len(h.a.ui_.ctxDefs))
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("editor context menu not opened")
+	}
+	items := h.a.ui_.ctxDefs
+	found := map[string]bool{}
+	for _, it := range items {
+		found[it.label] = true
+	}
+	expected := []string{"Undo", "Redo", "Cut", "Copy", "Paste", "Delete", "Select All", "Find…", "Replace…", "Go to Line…", "Highlighting", "Word Wrap"}
+	for _, exp := range expected {
+		if !found[exp] {
+			t.Errorf("missing editor context menu item %q", exp)
+		}
+	}
+
+	// 3. Tab context menu
+	h.a.ui_.ctxMenu.Close()
+	h.frame()
+	h.a.NewDocument()
+	tab2 := h.a.Active()
+	_ = tab2
+	h.frame()
+
+	// Right click on tab (tab bar center is ~y=76)
+	h.press(50, 76, pointer.ButtonSecondary)
+	t.Logf("tab menu opened: %v, items: %d", h.a.ui_.ctxMenu.Opened(), len(h.a.ui_.ctxDefs))
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("tab context menu not opened")
+	}
+	tabFound := map[string]bool{}
+	for _, it := range h.a.ui_.ctxDefs {
+		tabFound[it.label] = true
+	}
+	for _, exp := range []string{"Close", "Close Other Tabs", "Close All Tabs", "Save", "Save As…"} {
+		if !tabFound[exp] {
+			t.Errorf("missing tab context menu item %q", exp)
+		}
+	}
+
+	// 4. Tab bar background context menu (right click to the right of tabs)
+	h.a.ui_.ctxMenu.Close()
+	h.frame()
+	h.press(800, 76, pointer.ButtonSecondary)
+	if !h.a.ui_.ctxMenu.Opened() {
+		t.Fatal("tab bar background context menu not opened")
+	}
+	bgFound := map[string]bool{}
+	for _, it := range h.a.ui_.ctxDefs {
+		bgFound[it.label] = true
+	}
+	if !bgFound["New Document"] || !bgFound["Open File…"] {
+		t.Errorf("tab bar bg context menu missing New/Open: %v", bgFound)
+	}
 }

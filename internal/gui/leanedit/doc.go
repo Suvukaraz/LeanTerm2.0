@@ -58,6 +58,7 @@ type Tab struct {
 	mini                       minimap
 	fold                       foldState
 	comp                       compState
+	bodyTag                    int
 	center                     bool // center the caret line once laid out (a symbol jump)
 	typeface                   font.Typeface
 	invalidate                 func() // asks for a frame (from any goroutine)
