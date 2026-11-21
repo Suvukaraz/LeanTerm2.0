@@ -33,21 +33,11 @@ chmod 0755 "$DEB_ROOT/DEBIAN"
 # 1. Binary
 install -m 0755 "$ROOT_DIR/bin/leanterm" "$DEB_ROOT/usr/bin/leanterm"
 
-# 2. Desktop Entry
-cat <<EOF > "$DEB_ROOT/usr/share/applications/org.leanterm.LeanTerm.desktop"
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=LeanTerm
-GenericName=Connection Manager
-Comment=LeanTerm Connection Manager (SSH, Telnet, SFTP)
-Exec=/usr/bin/leanterm %u
-Icon=leanterm
-Terminal=false
-Categories=Network;Utility;
-StartupWMClass=org.leanterm.LeanTerm
-Keywords=ssh;telnet;sftp;terminal;connection;
-EOF
+# 2. Desktop entries. Their names are the application ids of the windows
+# (Wayland app_id, X11 WM_CLASS = StartupWMClass): the desktop finds the icon
+# and keeps LeanTerm and LeanEdit apart in the taskbar.
+sed "s|^Exec=leanterm|Exec=/usr/bin/leanterm|" "$ROOT_DIR/build/linux/org.leanterm.LeanTerm.desktop" \
+    > "$DEB_ROOT/usr/share/applications/org.leanterm.LeanTerm.desktop"
 chmod 0644 "$DEB_ROOT/usr/share/applications/org.leanterm.LeanTerm.desktop"
 
 # LeanEdit: the text editor on its own (own menu entry, "Open with" for text files)
@@ -65,6 +55,7 @@ install -m 0644 "$ROOT_DIR/LeanTerm_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor
 install -m 0644 "$ROOT_DIR/LeanEdit_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/leanedit.svg"
 
 # 4. Control file
+INSTALLED_SIZE=$(du -sk --exclude=DEBIAN "$DEB_ROOT" | cut -f1)
 cat <<EOF > "$DEB_ROOT/DEBIAN/control"
 Package: ${PKG_NAME}
 Version: ${VERSION}
@@ -77,6 +68,7 @@ Conflicts: linxterm
 Replaces: linxterm
 Recommends: xdg-utils, openssh-client, keepassxc
 Homepage: https://github.com/Suvukaraz/LeanTerm2.0
+Installed-Size: ${INSTALLED_SIZE}
 Description: LeanTerm Connection Manager
  SSH, Telnet and SFTP connection manager for Linux and Windows. Native SSH
  (jump hosts, port forwarding, agent, X11) and Telnet, tabbed terminals, an
@@ -104,6 +96,9 @@ cat <<EOF > "$DEB_ROOT/DEBIAN/postrm"
 set -e
 if which update-desktop-database >/dev/null 2>&1; then
     update-desktop-database -q || true
+fi
+if which gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
 fi
 exit 0
 EOF

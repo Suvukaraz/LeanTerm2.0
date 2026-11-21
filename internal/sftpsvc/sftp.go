@@ -78,8 +78,14 @@ func (m *SFTPManager) OpenForSession(tmpID string, sshClient *ssh.Client) (strin
 	defer m.mu.Unlock()
 
 	if sftpID, exists := m.session[tmpID]; exists {
-		if _, ok := m.clients[sftpID]; ok {
-			return sftpID, nil
+		if inst, ok := m.clients[sftpID]; ok {
+			if inst.sshClient == sshClient {
+				return sftpID, nil
+			}
+			// The session reconnected: the old SFTP channel belongs to the
+			// SSH connection that is gone.
+			_ = inst.client.Close()
+			delete(m.clients, sftpID)
 		}
 	}
 

@@ -121,6 +121,15 @@ func ReadOnlyMode(enabled bool) EditorOption {
 	}
 }
 
+// WrapIndent aligns wrapped continuation lines to the indentation of their
+// line, as KWrite's dynamic word wrap does (LeanTerm).
+func WrapIndent(enabled bool) EditorOption {
+	return func(e *Editor) {
+		e.initBuffer()
+		e.text.SetWrapIndent(enabled)
+	}
+}
+
 // WrapLine configures whether the displayed text will be broken into lines or not.
 func WrapLine(enabled bool) EditorOption {
 	return func(e *Editor) {
@@ -208,6 +217,20 @@ func WithDefaultGutters() EditorOption {
 			e.gutterManager = gutter.NewManager()
 		}
 		e.gutterManager.Register(providers.NewLineNumberProvider())
+	}
+}
+
+// WithWrapMarkers shows "↳" in the line number gutter on the continuation
+// rows of wrapped lines (LeanTerm: KWrite's dynamic word wrap indicators).
+// It applies to the line numbers registered before it.
+func WithWrapMarkers(enabled bool) EditorOption {
+	return func(e *Editor) {
+		if e.gutterManager == nil {
+			return
+		}
+		if p, ok := e.gutterManager.GetProvider(providers.LineNumberProviderID).(*providers.LineNumberProvider); ok {
+			p.WrapMarkers = enabled
+		}
 	}
 }
 

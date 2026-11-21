@@ -2,6 +2,7 @@ package leanedit
 
 import (
 	"strings"
+	"time"
 
 	"gioui.org/io/clipboard"
 	"gioui.org/io/event"
@@ -98,11 +99,18 @@ func (a *App) setEncoding(enc string) {
 	}
 }
 
+// setLanguage switches the active document's highlighting mode (status bar,
+// Tools → Highlighting). Highlighting, folding, Go to Symbol, comments and
+// completion all follow LanguageID; the tokens are rebuilt right away.
 func (a *App) setLanguage(id string) {
 	if t := a.Active(); t != nil {
 		t.LanguageID = id
 		t.lexer = lexerFor(id)
 		t.retoken = true
+		t.refreshAt = time.Time{}
+		if a.Invalidate != nil {
+			a.Invalidate()
+		}
 	}
 }
 

@@ -451,14 +451,20 @@ func (b *Browser) Download(paths []string, localDir string) {
 }
 
 // Upload copies local paths into the current remote folder.
-func (b *Browser) Upload(paths []string) {
+func (b *Browser) Upload(paths []string) { b.UploadTo(paths, "") }
+
+// UploadTo copies local paths into a remote folder ("" = the current one).
+func (b *Browser) UploadTo(paths []string, dir string) {
 	st := b.Snapshot()
 	if b.SFTP == nil || len(paths) == 0 {
 		return
 	}
+	if dir == "" {
+		dir = st.Current
+	}
 	id := b.addTransfer("upload", paths, "Calculating...")
 	go func() {
-		err := b.SFTP.Upload(st.ID, paths, st.Current)
+		err := b.SFTP.Upload(st.ID, paths, dir)
 		b.finish(id, err, "Done")
 		b.fail(err)
 		b.load(b.Snapshot().Current)
@@ -501,6 +507,57 @@ func (b *Browser) CopyOrMove(op string, paths []string, dstDir string, overwrite
 	}()
 }
 
+// MoveInto moves entries of this browser into the folder dir (rows dragged
+// onto a folder): a rename on the server, a move on the local disk.
+// overwrite replaces files of the same name (never folders).
+func (b *Browser) MoveInto(paths []string, dir string, overwrite bool) {
+	st := b.Snapshot()
+	if len(paths) == 0 || dir == "" {
+		return
+	}
+	if b.Backend.Kind() == KindLocal {
+		b.CopyOrMove("move", paths, dir, overwrite)
+		return
+	}
+	id := b.addTransfer("move", paths, "Moving...")
+	go func() {
+		isDir := map[string]bool{}
+		if entries, err := b.Backend.List(st.ID, dir, true); err == nil {
+			for _, e := range entries {
+				isDir[e.Name] = e.IsDir
+			}
+		}
+		var err error
+		for _, p := range paths {
+			name := BaseName(p)
+			dst := JoinPath(dir, name, st.Win)
+			if dst == p || dir == p {
+				continue // onto itself
+			}
+			if d, exists := isDir[name]; exists {
+				if !overwrite || d {
+					if err == nil {
+						err = fmt.Errorf("%s exists already in %s", name, dir)
+					}
+					continue
+				}
+				if e := b.Backend.Remove(st.ID, []string{dst}); e != nil {
+					if err == nil {
+						err = e
+					}
+					continue
+				}
+			}
+			if e := b.Backend.Rename(st.ID, p, dst); e != nil && err == nil {
+				err = e
+			}
+		}
+		b.finish(id, err, "Done → "+dir)
+		b.fail(err)
+		b.load(b.Snapshot().Current)
+	}()
+}
+
 // Conflicts are the names of paths that already exist in dstDir (blocking).
 func (b *Browser) Conflicts(paths []string, dstDir string) []string {
 	st := b.Snapshot()
@@ -509,7 +566,12 @@ func (b *Browser) Conflicts(paths []string, dstDir string) []string {
 		return names
 	}
 	existing := map[string]bool{}
-	for _, e := range st.Entries {
+	entries := st.Entries
+	if dstDir != st.Current {
+		// Another folder (a drop onto a folder row): its own listing.
+		entries, _ = b.Backend.List(st.ID, dstDir, true)
+	}
+	for _, e := range entries {
 		existing[e.Name] = true
 	}
 	var out []string

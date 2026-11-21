@@ -311,8 +311,9 @@ func (u *ui) findPanel(gtx layout.Context, t *tab) layout.Dimensions {
 	p := u.th.Pal
 	return u.floatPanel(gtx, p.BorderColor, layout.Inset{Top: 6, Bottom: 6, Left: 8, Right: 8}, func(gtx layout.Context) layout.Dimensions {
 		btn := func(icon rune, c *widget.Clickable) layout.FlexChild {
+			tip := map[*widget.Clickable]string{&fb.prev: "Previous match", &fb.next: "Next match", &fb.close: "Close (Esc)"}[c]
 			return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return gtk.Button{Icon: icon}.Layout(gtx, u.th, c)
+				return gtk.Button{Icon: icon, Tooltip: tip}.Layout(gtx, u.th, c)
 			})
 		}
 		gap := func(w unit.Dp) layout.FlexChild { return layout.Rigid(layout.Spacer{Width: w}.Layout) }

@@ -68,6 +68,10 @@ func TestValidateTerminalEngine(t *testing.T) {
 	cfg.Terminal.Engine = "rio"
 	assert.False(t, Validate(cfg).HasErrors())
 
+	// The settings window stores the pure Go engine as "vt".
+	cfg.Terminal.Engine = "vt"
+	assert.False(t, Validate(cfg).HasErrors())
+
 	cfg.Terminal.Engine = "xterm"
 	assert.True(t, Validate(cfg).HasErrors())
 

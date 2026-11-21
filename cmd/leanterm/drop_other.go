@@ -2,8 +2,14 @@
 
 package main
 
-import "gioui.org/app"
+import (
+	"gioui.org/app"
 
-// maybeEnableDrop does nothing: Gio has no drop target on X11/Wayland yet
-// (dropped files open in LeanEdit where drops work).
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/dnd"
+)
+
+// maybeEnableDrop does nothing on X11 and Wayland: the patched Gio delivers
+// app.FileDropEvent (see third_party/gio).
 func (u *ui) maybeEnableDrop(e app.ViewEvent) {}
+
+func enableWindowsDrop(app.ViewEvent, *uintptr, func(dnd.Drop)) {}

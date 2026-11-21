@@ -60,7 +60,16 @@ func (s *SFTPService) CloseForSession(tmpID string) error {
 	return s.mgr.CloseForSession(tmpID)
 }
 
+// fresh re-opens the SFTP channel of a session that reconnected in place
+// (its SSH connection is a new one); sftpID is the session's tmpID.
+func (s *SFTPService) fresh(sftpID string) {
+	if s.sessionMgr != nil && s.sessionAlive(sftpID) {
+		_, _ = s.OpenForSession(sftpID)
+	}
+}
+
 func (s *SFTPService) Getwd(sftpID string) (string, error) {
+	s.fresh(sftpID)
 	return s.mgr.Getwd(sftpID)
 }
 
@@ -69,6 +78,7 @@ func (s *SFTPService) RealPath(sftpID, p string) (string, error) {
 }
 
 func (s *SFTPService) List(sftpID, path string, showHidden bool) ([]sftpsvc.FileEntry, error) {
+	s.fresh(sftpID)
 	return s.mgr.List(sftpID, path, showHidden)
 }
 
@@ -108,6 +118,7 @@ func (s *SFTPService) StatVFS(sftpID, path string) (sftpsvc.VFSInfo, error) {
 // Download copies remote files/folders to localDir ("" = configured download folder)
 // and returns the folder the files were written to.
 func (s *SFTPService) Download(sftpID string, remotePaths []string, localDir string) (string, error) {
+	s.fresh(sftpID)
 	opts, dir := s.transferSettings()
 	if localDir == "" {
 		localDir = dir
@@ -116,6 +127,7 @@ func (s *SFTPService) Download(sftpID string, remotePaths []string, localDir str
 }
 
 func (s *SFTPService) Upload(sftpID string, localPaths []string, remoteDir string) error {
+	s.fresh(sftpID)
 	opts, _ := s.transferSettings()
 	return s.mgr.UploadWithOptions(sftpID, localPaths, remoteDir, opts)
 }
@@ -159,6 +171,7 @@ func (s *SFTPService) UploadBack(sftpID, localPath, remotePath string) error {
 // used instead (the user reconnected in a new tab).
 func (s *SFTPService) editorFS(sftpID, connID string) (editor.FS, error) {
 	if s.sessionAlive(sftpID) {
+		s.fresh(sftpID)
 		if client, err := s.mgr.Client(sftpID); err == nil {
 			return editor.SFTPFS{Client: client}, nil
 		}

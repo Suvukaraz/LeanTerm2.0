@@ -150,10 +150,12 @@ func Validate(cfg *Config) ValidationResult {
 		res.AddError("terminal.macros_bar", "must be 'never', 'combo', or 'buttons'")
 	}
 
+	// "vt" is the pure Go engine the settings window writes; "rio" is its
+	// former name in older files.
 	switch cfg.Terminal.Engine {
-	case "rio", "ghostty":
+	case "vt", "rio", "ghostty":
 	default:
-		res.AddError("terminal.engine", "must be 'rio' or 'ghostty'")
+		res.AddError("terminal.engine", "must be 'ghostty' or 'vt'")
 	}
 
 	switch cfg.Terminal.TabsPosition {

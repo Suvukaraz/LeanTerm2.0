@@ -94,9 +94,12 @@ type look struct {
 	tabWidth int
 	softTab  bool
 	wrap     bool
-	spaces   bool
-	tabs     bool
-	pal      *gtk.Palette
+	// wrapIndent and wrapMarkers: KWrite's dynamic word wrap (aligned
+	// continuation rows, indicators in the gutter).
+	wrapIndent, wrapMarkers bool
+	spaces                  bool
+	tabs                    bool
+	pal                     *gtk.Palette
 }
 
 // scheme builds the editor colors from the theme (theme.ts: the --gtk-syntax-*
@@ -128,7 +131,7 @@ func scheme(p *gtk.Palette) syntax.ColorScheme {
 
 // apply sets the look on the editor when it changed.
 func (t *Tab) apply(l look, typeface font.Typeface) {
-	key := l.family + "|" + l.pal.Name + "|" + ftoa(l.size) + "|" + itoa(l.tabWidth) + "|" + btoa(l.softTab) + "|" + btoa(l.wrap) + "|" + btoa(l.spaces) + btoa(l.tabs)
+	key := l.family + "|" + l.pal.Name + "|" + ftoa(l.size) + "|" + itoa(l.tabWidth) + "|" + btoa(l.softTab) + "|" + btoa(l.wrap) + btoa(l.wrapIndent) + btoa(l.wrapMarkers) + "|" + btoa(l.spaces) + btoa(l.tabs)
 	if key == t.styled {
 		return
 	}
@@ -143,12 +146,14 @@ func (t *Tab) apply(l look, typeface font.Typeface) {
 		gvcode.WithSoftTab(l.softTab),
 		gvcode.WithColorScheme(scheme(l.pal)),
 		gvcode.WithDefaultGutters(),
+		gvcode.WithWrapMarkers(l.wrap && l.wrapMarkers),
 		gvcode.WithGutter(t.marksProvider(l.pal)),
 		gvcode.WithGutter(t.foldProvider(l.pal, t.invalidate)),
 		gvcode.WithGutterGap(unit.Dp(6)),
 		// .cm-gutters: the header color with a border on the right.
 		gvcode.WithGutterStyle(gvcolor.MakeColor(l.pal.HeaderBg), gvcolor.MakeColor(l.pal.BorderColor)),
 		gvcode.WrapLine(l.wrap),
+		gvcode.WrapIndent(l.wrap && l.wrapIndent),
 		// .cm-highlightSpace / .cm-highlightTab: the muted color.
 		gvcode.WithWhitespace(l.spaces, l.tabs, l.pal.MutedFg),
 	)

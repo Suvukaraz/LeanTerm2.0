@@ -126,6 +126,8 @@ func Default() *Config {
 			IndentWithTabs:       false,
 			AutoDetectIndent:     true,
 			WordWrap:             true,
+			WrapIndent:           true,
+			WrapMarkers:          true,
 			ShowWhitespace:       false,
 			ShowTabs:             true,
 			ShowMinimap:          true,

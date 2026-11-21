@@ -128,7 +128,7 @@ type TerminalConfig struct {
 	WindowHeight           int                  `toml:"window_height" comment:"Default terminal window height"`
 	StartMaximized         bool                 `toml:"start_maximized" comment:"Start Terminals maximized"`
 	ShowStatusBar          bool                 `toml:"show_status_bar" comment:"Show status bar on every terminal"`
-	Engine                 string               `toml:"engine" comment:"Terminal engine: ghostty | rio (applies to new terminals)"`
+	Engine                 string               `toml:"engine" comment:"Terminal engine: ghostty | vt (rio = vt; applies to new terminals)"`
 	ChangeMainTitle        bool                 `toml:"change_main_title" comment:"Change main window title with terminal title"`
 	MacrosBar              string               `toml:"macros_bar" comment:"Show MACROS: never | combo | buttons"`
 	ShowGlobalMacros       bool                 `toml:"show_global_macros" comment:"Show GLOBAL commands in terminals"`
@@ -152,8 +152,12 @@ type EditorConfig struct {
 	TabWidth        int        `toml:"tab_width" comment:"Tab width in columns (1-16)"`
 	IndentWithTabs  bool       `toml:"indent_with_tabs" comment:"Indent with tabs instead of spaces"`
 	// AutoDetectIndent takes tabs or spaces and the width from the file (KWrite).
-	AutoDetectIndent     bool   `toml:"auto_detect_indent" comment:"Detect the indentation (tabs or spaces, width) of opened files"`
-	WordWrap             bool   `toml:"word_wrap" comment:"Wrap long lines"`
+	AutoDetectIndent bool `toml:"auto_detect_indent" comment:"Detect the indentation (tabs or spaces, width) of opened files"`
+	WordWrap         bool `toml:"word_wrap" comment:"Wrap long lines"`
+	// KWrite's dynamic word wrap: wrapped rows start at the line's indentation
+	// and show an indicator in the line number gutter.
+	WrapIndent           bool   `toml:"wrap_indent" comment:"Align wrapped lines to the indentation of their line (KWrite)"`
+	WrapMarkers          bool   `toml:"wrap_markers" comment:"Show word wrap indicators next to the line numbers (KWrite)"`
 	ShowWhitespace       bool   `toml:"show_whitespace" comment:"Show spaces and tabs"`
 	ShowTabs             bool   `toml:"show_tabs" comment:"Show tabs (also without show_whitespace, like KWrite)"`
 	ShowMinimap          bool   `toml:"show_minimap" comment:"Show the scrollbar minimap (KWrite style)"`

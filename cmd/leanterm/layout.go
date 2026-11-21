@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 	"image"
 	"image/color"
+	"os"
 	"strings"
+
+	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
 
 	"gioui.org/f32"
 	"gioui.org/io/key"
@@ -33,7 +35,9 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 		u.exitNow()
 	}
 	u.winWidth = gtx.Constraints.Max.X
+	u.winHeight = gtx.Constraints.Max.Y
 	u.trackPointer(gtx)
+	u.dragOut()
 	for drained := false; !drained; {
 		select {
 		case f := <-u.filesEvents:
@@ -123,7 +127,14 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 			return u.treeMenu.Layout(gtx, u.th)
 		}),
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-			return u.termMenu.Layout(gtx, u.th)
+			was := u.termMenu.Opened()
+			d := u.termMenu.Layout(gtx, u.th)
+			// Closed with Escape: the keyboard goes back to the terminal (a
+			// press elsewhere gives it to what was pressed).
+			if was && !u.termMenu.Opened() && !u.termMenu.Dismissed() {
+				u.focus = true
+			}
+			return d
 		}),
 		layout.Expanded(u.fileOverlays),
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions { return u.editConn.Layout(gtx, u.th) }),
@@ -149,6 +160,11 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 		// for the context menus.
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			return u.globalPointer(gtx)
+		}),
+		// The tooltip of the widget under the pointer.
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			u.th.LayoutTooltip(gtx, u.lastPtr)
+			return layout.Dimensions{}
 		}),
 	)
 }
@@ -177,20 +193,21 @@ func (u *ui) buttonBar(gtx layout.Context, top bool) layout.Dimensions {
 		click  *widget.Clickable
 		active bool
 		off    bool
+		tip    string
 	}
 	lockIcon := fonts.IconUnlock
 	if locked {
 		lockIcon = fonts.IconLock
 	}
 	items := []item{
-		{fonts.IconList, iconGreen, "Connections", &u.buttons.panelToggle, u.panelVisible, false},
-		{fonts.IconBriefcase, iconSFTP, "File Browser", &u.buttons.sftpToggle, u.sftpVisible, false},
-		{fonts.IconSitemap, iconGray, "Clusters", &u.buttons.clustersToggle, u.clustersVisible, false},
-		{fonts.IconTerminal, iconGreen, "Local shell", &u.buttons.localShell, false, false},
-		{fonts.IconPowerOff, iconGray, "Wake On Lan", &u.buttons.wol, false, false},
-		{fonts.IconTools, iconGray, "Settings", &u.buttons.prefs, false, false},
-		{lockIcon, iconLock, "", &u.buttons.lock, locked, !pp},
-		{fonts.IconInfo, color.NRGBA{}, "About", &u.buttons.about, false, false},
+		{fonts.IconList, iconGreen, "Connections", &u.buttons.panelToggle, u.panelVisible, false, ""},
+		{fonts.IconBriefcase, iconSFTP, "File Browser", &u.buttons.sftpToggle, u.sftpVisible, false, ""},
+		{fonts.IconSitemap, iconGray, "Clusters", &u.buttons.clustersToggle, u.clustersVisible, false, ""},
+		{fonts.IconTerminal, iconGreen, "Local shell", &u.buttons.localShell, false, false, ""},
+		{fonts.IconPowerOff, iconGray, "Wake On Lan", &u.buttons.wol, false, false, ""},
+		{fonts.IconTools, iconGray, "Settings", &u.buttons.prefs, false, false, ""},
+		{lockIcon, iconLock, "", &u.buttons.lock, locked, !pp, "Lock LeanTerm (needs a master password)"},
+		{fonts.IconInfo, color.NRGBA{}, "About", &u.buttons.about, false, false, ""},
 	}
 	gtx.Constraints.Min.X = gtx.Constraints.Max.X
 	call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -201,7 +218,7 @@ func (u *ui) buttonBar(gtx layout.Context, top bool) layout.Dimensions {
 					kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
 				}
 				kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					b := gtk.Button{Icon: it.icon, IconColor: it.color, Label: it.label, Active: it.active, Disabled: it.off}
+					b := gtk.Button{Icon: it.icon, IconColor: it.color, Label: it.label, Active: it.active, Disabled: it.off, Tooltip: it.tip}
 					return b.Layout(gtx, u.th, it.click)
 				}))
 			}
@@ -403,8 +420,9 @@ func (u *ui) terminalStatusBar(gtx layout.Context, t *tab) layout.Dimensions {
 		return layout.W.Layout(gtx, gtk.Text{S: status, Size: unit.Sp(11), Color: p.FgColor, MaxLines: 1}.Widget(u.th))
 	}))
 	// .status-btn: transparent, 1px border, radius 3px, padding 1px 3px.
-	statusBtn := func(icon rune, c color.NRGBA, active bool, click *widget.Clickable) layout.FlexChild {
+	statusBtn := func(icon rune, c color.NRGBA, active bool, click *widget.Clickable, tip string) layout.FlexChild {
 		return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			defer u.th.ClickableTip(gtx, click, tip)
 			return click.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				call, d := record(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Inset{Left: 4, Right: 4, Top: 2, Bottom: 2}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -433,9 +451,13 @@ func (u *ui) terminalStatusBar(gtx layout.Context, t *tab) layout.Dimensions {
 		if t.kind != "local" {
 			ic, c = fonts.IconBriefcase, iconSFTP
 		}
-		right = append(right, statusBtn(ic, c, t.sftpOpen, &t.sftpBtn), gap)
+		tip := "Show the file browser (Alt+Ctrl+S)"
+		if t.sftpOpen {
+			tip = "Hide the file browser (Alt+Ctrl+S)"
+		}
+		right = append(right, statusBtn(ic, c, t.sftpOpen, &t.sftpBtn, tip), gap)
 	}
-	right = append(right, statusBtn(fonts.IconInfo, p.FgColor, false, &u.buttons.infoTabBtn))
+	right = append(right, statusBtn(fonts.IconInfo, p.FgColor, false, &u.buttons.infoTabBtn, "Connection info"))
 
 	h := gtx.Dp(30)
 	w := gtx.Constraints.Max.X
@@ -556,28 +578,47 @@ func (u *ui) globalKeys(gtx layout.Context) {
 
 // ---- drops -------------------------------------------------------------------
 
-// handleDrops takes files dropped from the desktop: into the shown file
-// browser, else they open in LeanEdit.
+// handleDrops takes files dropped from the desktop: dropped on the shown
+// file browser they go into the folder under the pointer (or the current
+// one); anywhere else they open in LeanEdit.
 func (u *ui) handleDrops() {
 	for {
 		select {
 		case d := <-u.drops:
-			if u.dropFiles(d.Paths) {
+			paths := d.Paths
+			if t := u.activeTab(); t != nil && t.files != nil && t.sftpOpen && hasFiles(t) {
+				t.files.Drop(paths, func() { u.openDropped(paths) })
 				continue
 			}
-			paths := d.Paths
-			go func() {
-				for _, p := range paths {
-					if err := u.editorSvc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
-						u.dropMsg = err.Error()
-						u.w.Invalidate()
-					}
-				}
-			}()
+			u.openDropped(paths)
 		default:
 			return
 		}
 	}
+}
+
+// openDropped opens dropped files in LeanEdit (folders are left out).
+func (u *ui) openDropped(paths []string) {
+	go func() {
+		for _, p := range paths {
+			if fi, err := os.Stat(p); err != nil || fi.IsDir() {
+				continue
+			}
+			if err := u.editorSvc.Open(services.EditorFile{Kind: "local", Path: p}); err != nil {
+				u.postNotice(err.Error())
+			}
+		}
+	}()
+}
+
+// postNotice shows msg in the status line; it may be called from any
+// goroutine (the message is set on the UI goroutine).
+func (u *ui) postNotice(msg string) {
+	select {
+	case u.filesEvents <- func() { u.dropMsg = msg }:
+	default: // the UI is busy with many events; the message is dropped
+	}
+	u.w.Invalidate()
 }
 
 func (u *ui) onDrop(d dnd.Drop) {

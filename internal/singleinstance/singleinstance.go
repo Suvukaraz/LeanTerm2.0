@@ -1,11 +1,18 @@
 // Package singleinstance lets a second standalone LeanEdit hand its files to
 // the one that is already running.
 //
-// The running instance listens on a loopback port and writes the port and a
-// random token to leanedit.lock in the configuration folder (mode 0600). A
-// second instance reads the file, connects, sends the token and the absolute
-// file paths as one JSON line, waits for the answer and exits. A lock file
-// nobody answers for (the instance is gone) is stale and is replaced.
+// The running instance listens on a loopback port and writes the port, a
+// random token and its process id to leanedit.lock in the configuration
+// folder (mode 0600). A second instance reads the file, connects, sends the
+// token, the absolute file paths and the desktop's activation token (so the
+// running window may come to the front) as one JSON line, waits for the
+// answer and exits. A lock file of a process that is gone, or that nobody
+// answers for, is stale and is replaced.
+//
+// Only standalone LeanEdit processes take part: the editor window inside
+// LeanTerm never takes files from other programs, so a LeanEdit started from
+// the desktop does not attach to it (and LeanTerm's remote files stay in
+// LeanTerm).
 package singleinstance
 
 import (
@@ -29,18 +36,31 @@ const LockFile = "leanedit.lock"
 
 const (
 	dialTimeout = time.Second
-	ioTimeout   = 5 * time.Second
+	ioTimeout   = 3 * time.Second
 	maxMessage  = 1 << 20
 )
 
 type lockInfo struct {
 	Port  int    `json:"port"`
 	Token string `json:"token"`
+	// PID is the running instance's process id (0 in files of older
+	// versions): a lock of a process that is gone is not dialled.
+	PID int `json:"pid,omitempty"`
 }
 
 type request struct {
 	Token string   `json:"token"`
 	Files []string `json:"files"`
+	// Activation is the desktop's activation token of the second instance
+	// (XDG_ACTIVATION_TOKEN, DESKTOP_STARTUP_ID).
+	Activation string `json:"activation,omitempty"`
+}
+
+// Request is what a second instance hands over: absolute file paths (none:
+// "show yourself") and the activation token the desktop gave it.
+type Request struct {
+	Files      []string
+	Activation string
 }
 
 type reply struct {
@@ -62,6 +82,11 @@ type Server struct {
 // when a second instance was started without files, meaning "show yourself").
 // Any lock file from an earlier instance is replaced.
 func Listen(dir string, handle func(files []string)) (*Server, error) {
+	return ListenRequests(dir, func(r Request) { handle(r.Files) })
+}
+
+// ListenRequests is Listen with the whole request (files and activation token).
+func ListenRequests(dir string, handle func(Request)) (*Server, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -72,7 +97,7 @@ func Listen(dir string, handle func(files []string)) (*Server, error) {
 		return nil, err
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
-	if err := writeLock(dir, lockInfo{Port: port, Token: token}); err != nil {
+	if err := writeLock(dir, lockInfo{Port: port, Token: token, PID: os.Getpid()}); err != nil {
 		_ = ln.Close()
 		return nil, err
 	}
@@ -94,7 +119,7 @@ func (s *Server) Close() error {
 	return err
 }
 
-func (s *Server) serve(handle func(files []string)) {
+func (s *Server) serve(handle func(Request)) {
 	for {
 		conn, err := s.ln.Accept()
 		if err != nil {
@@ -104,7 +129,7 @@ func (s *Server) serve(handle func(files []string)) {
 	}
 }
 
-func (s *Server) handleConn(conn net.Conn, handle func(files []string)) {
+func (s *Server) handleConn(conn net.Conn, handle func(Request)) {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(ioTimeout))
 	var req request
@@ -116,7 +141,7 @@ func (s *Server) handleConn(conn net.Conn, handle func(files []string)) {
 		writeReply(conn, reply{Error: "wrong token"})
 		return
 	}
-	handle(req.Files)
+	handle(Request{Files: req.Files, Activation: req.Activation})
 	writeReply(conn, reply{OK: true})
 }
 
@@ -129,12 +154,20 @@ func writeReply(w io.Writer, r reply) {
 // It reports true when the instance has them; false means that no instance
 // answered and the caller should start its own.
 func Forward(dir string, files []string) (bool, error) {
+	return ForwardRequest(dir, Request{Files: files})
+}
+
+// ForwardRequest is Forward with an activation token.
+func ForwardRequest(dir string, r Request) (bool, error) {
 	info, ok := readLock(dir)
 	if !ok {
 		return false, nil
 	}
-	abs := make([]string, 0, len(files))
-	for _, f := range files {
+	if info.PID > 0 && info.PID != os.Getpid() && !processAlive(info.PID) {
+		return false, nil // stale lock file of a process that is gone
+	}
+	abs := make([]string, 0, len(r.Files))
+	for _, f := range r.Files {
 		p, err := filepath.Abs(f)
 		if err != nil {
 			return false, err
@@ -147,18 +180,18 @@ func Forward(dir string, files []string) (bool, error) {
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(ioTimeout))
-	b, err := json.Marshal(request{Token: info.Token, Files: abs})
+	b, err := json.Marshal(request{Token: info.Token, Files: abs, Activation: r.Activation})
 	if err != nil {
 		return false, err
 	}
 	if _, err := conn.Write(append(b, '\n')); err != nil {
 		return false, nil
 	}
-	var r reply
-	if err := json.NewDecoder(conn).Decode(&r); err != nil {
+	var rep reply
+	if err := json.NewDecoder(conn).Decode(&rep); err != nil {
 		return false, nil
 	}
-	return r.OK, nil
+	return rep.OK, nil
 }
 
 // readLock returns the lock file's content; false when there is none or it

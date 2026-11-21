@@ -336,21 +336,21 @@ func (u *ui) panelToolbar(gtx layout.Context) layout.Dimensions {
 		return layout.Inset{Left: 4, Right: 4, Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			btn := func(icon rune, tooltip string, click *widget.Clickable, disabled bool) layout.FlexChild {
 				return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					b := gtk.Button{Variant: gtk.CP, Icon: icon, IconColor: toolbarColors[icon], Disabled: disabled}
+					b := gtk.Button{Variant: gtk.CP, Icon: icon, IconColor: toolbarColors[icon], Disabled: disabled, Tooltip: tooltip}
 					return b.Layout(gtx, u.th, click)
 				})
 			}
 			compact := u.cfg != nil && u.cfg.General.Layout == "compact"
 			kids := []layout.FlexChild{}
 			kids = append(kids,
-				btn(fonts.IconFolderAdd, "", &u.buttons.addGroup, !u.canAdd()),
-				btn(fonts.IconPlug, "", &u.buttons.addConn, !u.canAdd()),
-				btn(fonts.IconEdit, "", &u.buttons.edit, !u.canEdit()),
-				btn(fonts.IconPencil, "", &u.buttons.rename, !u.canRename()),
-				btn(fonts.IconTrash, "", &u.buttons.delete, !u.canDelete()),
+				btn(fonts.IconFolderAdd, "Add group", &u.buttons.addGroup, !u.canAdd()),
+				btn(fonts.IconPlug, "Add connection", &u.buttons.addConn, !u.canAdd()),
+				btn(fonts.IconEdit, "Edit connection (Alt+E)", &u.buttons.edit, !u.canEdit()),
+				btn(fonts.IconPencil, "Rename (F2)", &u.buttons.rename, !u.canRename()),
+				btn(fonts.IconTrash, "Delete (Del)", &u.buttons.delete, !u.canDelete()),
 			)
 			if compact {
-				kids = append(kids, btn(fonts.IconClose, "", &u.buttons.closeWin, false))
+				kids = append(kids, btn(fonts.IconClose, "Close window", &u.buttons.closeWin, false))
 			}
 			spaced := []layout.FlexChild{}
 			for i, k := range kids {
@@ -778,19 +778,19 @@ func (u *ui) searchArea(gtx layout.Context) layout.Dimensions {
 				kids = append(kids, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 					return gtk.Entry{Placeholder: "Search...", Width: -1}.Layout(gtx, u.th, &u.searchQuery)
 				}))
-				iconBtn := func(icon rune, click *widget.Clickable) layout.FlexChild {
+				iconBtn := func(icon rune, click *widget.Clickable, tip string) layout.FlexChild {
 					return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						b := gtk.Button{Variant: gtk.CP, Icon: icon}
+						b := gtk.Button{Variant: gtk.CP, Icon: icon, Tooltip: tip}
 						return b.Layout(gtx, u.th, click)
 					})
 				}
 				kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
 				kids = append(kids,
-					iconBtn(fonts.IconArrowLeft, &u.buttons.searchPrev),
+					iconBtn(fonts.IconArrowLeft, &u.buttons.searchPrev, "Previous match"),
 					layout.Rigid(layout.Spacer{Width: 2}.Layout),
-					iconBtn(fonts.IconArrowRight, &u.buttons.searchNext),
+					iconBtn(fonts.IconArrowRight, &u.buttons.searchNext, "Next match"),
 					layout.Rigid(layout.Spacer{Width: 2}.Layout),
-					iconBtn(fonts.IconClose, &u.buttons.searchClose),
+					iconBtn(fonts.IconClose, &u.buttons.searchClose, "Close search (Esc)"),
 				)
 				return layout.Flex{Alignment: layout.Middle}.Layout(gtx, kids...)
 			}
@@ -828,7 +828,7 @@ func (u *ui) searchStartRow(gtx layout.Context) layout.Dimensions {
 		return layout.Inset{Left: 4, Right: 4, Top: pad, Bottom: pad}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			kids := []layout.FlexChild{}
 			kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconSearch, Active: u.searchVisible}
+				b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconSearch, Active: u.searchVisible, Tooltip: "Find connection (Ctrl+F)"}
 				return b.Layout(gtx, u.th, &u.buttons.searchToggle)
 			}))
 			kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
@@ -838,7 +838,7 @@ func (u *ui) searchStartRow(gtx layout.Context) layout.Dimensions {
 			}))
 			kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
 			kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconBolt}
+				b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconBolt, Tooltip: "Quick connect"}
 				return b.Layout(gtx, u.th, &u.buttons.quickConnect)
 			}))
 			kids = append(kids, layout.Rigid(layout.Spacer{Width: 4}.Layout))
@@ -850,7 +850,11 @@ func (u *ui) searchStartRow(gtx layout.Context) layout.Dimensions {
 				if favOn {
 					icon = fonts.IconStar
 				}
-				b := gtk.Button{Variant: gtk.CP, Icon: icon, Disabled: favDisabled}
+				tip := "Add to favourites (Alt+F)"
+				if favOn {
+					tip = "Remove from favourites (Alt+Shift+F)"
+				}
+				b := gtk.Button{Variant: gtk.CP, Icon: icon, Disabled: favDisabled, Tooltip: tip}
 				return b.Layout(gtx, u.th, &u.buttons.favourite)
 			}))
 			return layout.Flex{Alignment: layout.Middle}.Layout(gtx, kids...)
@@ -902,15 +906,15 @@ func (u *ui) clustersRow(gtx layout.Context) layout.Dimensions {
 				}
 				kids = append(kids,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconTerminal}
+						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconTerminal, Tooltip: "Local shell (Ctrl+Shift+T)"}
 						return b.Layout(gtx, u.th, &u.buttons.localShell)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconCog}
+						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconCog, Tooltip: "Settings"}
 						return b.Layout(gtx, u.th, &u.buttons.prefs)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconPowerOff}
+						b := gtk.Button{Variant: gtk.CP, Icon: fonts.IconPowerOff, Tooltip: "Quit (Ctrl+Q)"}
 						return b.Layout(gtx, u.th, &u.buttons.quitBtn)
 					}),
 				)

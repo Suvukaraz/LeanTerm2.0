@@ -22,6 +22,7 @@ var (
 )
 
 const (
+	wmMouseMove = 0x0200
 	wmDropFiles = 0x0233
 	gwlpWndProc = ^uintptr(3) // -4
 )
@@ -85,6 +86,10 @@ func dropWndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
 		procDragQueryPt.Call(hdrop, uintptr(unsafe.Pointer(&pt)))
 		d.X, d.Y = int(pt.X), int(pt.Y)
 		procDragFinish.Call(hdrop)
+		// The pointer is where the files were dropped: a mouse move tells
+		// the window, so what lies under it (a folder of the file browser)
+		// is hovered when the program handles the drop.
+		procCallWindowPrc.Call(t.prev, hwnd, wmMouseMove, 0, uintptr(uint16(pt.X))|uintptr(uint16(pt.Y))<<16)
 		if t.onDrop != nil && len(d.Paths) > 0 {
 			t.onDrop(d)
 		}

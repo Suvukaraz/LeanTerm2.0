@@ -149,7 +149,7 @@ window_height = 600
 start_maximized = false
 # Show status bar on every terminal
 show_status_bar = true
-# Terminal engine: ghostty | rio (applies to new terminals)
+# Terminal engine: ghostty | vt (rio = vt; applies to new terminals)
 engine = 'ghostty'
 # Change main window title with terminal title
 change_main_title = false
@@ -271,6 +271,10 @@ indent_with_tabs = false
 auto_detect_indent = true
 # Wrap long lines
 word_wrap = true
+# Align wrapped lines to the indentation of their line (KWrite)
+wrap_indent = true
+# Show word wrap indicators next to the line numbers (KWrite)
+wrap_markers = true
 # Show spaces and tabs
 show_whitespace = false
 # Show tabs (also without show_whitespace, like KWrite)

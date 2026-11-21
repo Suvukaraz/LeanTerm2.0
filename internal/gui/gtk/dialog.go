@@ -35,6 +35,66 @@ type Dialog struct {
 	close    widget.Clickable
 	closeReq bool
 	backdrop int
+
+	// The title bar (or banner) moves the dialog: off is its distance from
+	// the centered position, kept while the Dialog value lives.
+	move     int // the drag area's tag
+	off      image.Point
+	dragging bool
+	grab     image.Point
+}
+
+// Moved reports whether the user dragged the dialog away from the center.
+func (d *Dialog) Moved() bool { return d.off != (image.Point{}) }
+
+// ResetPosition centers the dialog again (for a dialog value that is reused).
+func (d *Dialog) ResetPosition() { d.off, d.dragging = image.Point{}, false }
+
+// updateDrag follows a drag of the title bar. Positions are relative to the
+// bar, which moves with the dialog: each event moves it by its distance from
+// the point where it was grabbed.
+func (d *Dialog) updateDrag(gtx layout.Context) {
+	// All events of a frame are relative to where the bar was drawn last:
+	// the latest drag counts.
+	var move image.Point
+	defer func() { d.off = d.off.Add(move) }()
+	for {
+		ev, ok := gtx.Event(pointer.Filter{Target: &d.move, Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Cancel})
+		if !ok {
+			break
+		}
+		e, ok := ev.(pointer.Event)
+		if !ok {
+			continue
+		}
+		pos := e.Position.Round()
+		switch e.Kind {
+		case pointer.Press:
+			if e.Buttons.Contain(pointer.ButtonPrimary) || e.Source == pointer.Touch {
+				d.dragging, d.grab = true, pos
+				gtx.Execute(pointer.GrabCmd{Tag: &d.move, ID: e.PointerID})
+			}
+		case pointer.Drag:
+			if d.dragging {
+				move = pos.Sub(d.grab)
+			}
+		case pointer.Release, pointer.Cancel:
+			d.dragging = false
+		}
+	}
+}
+
+// dragArea registers the title bar's area (size sz) for moving the dialog;
+// the close button lies on top of it and keeps its clicks.
+func (d *Dialog) dragArea(gtx layout.Context, sz image.Point) {
+	st := clip.Rect{Max: sz}.Push(gtx.Ops)
+	event.Op(gtx.Ops, &d.move)
+	if d.dragging {
+		pointer.CursorGrabbing.Add(gtx.Ops)
+	} else {
+		pointer.CursorDefault.Add(gtx.Ops)
+	}
+	st.Pop()
 }
 
 // CloseRequested reports (once) that Escape or × asked to close the dialog.
@@ -83,7 +143,8 @@ func (d *Dialog) Layout(gtx layout.Context, th *Theme, body layout.Widget, actio
 	if w == 0 {
 		w = 500
 	}
-	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	d.updateDrag(gtx)
+	place := func(gtx layout.Context) layout.Dimensions {
 		px := min(gtx.Dp(w), size.X*96/100)
 		gtx.Constraints.Min.X, gtx.Constraints.Max.X = px, px
 		gtx.Constraints.Min.Y = 0
@@ -115,7 +176,25 @@ func (d *Dialog) Layout(gtx layout.Context, th *Theme, body layout.Widget, actio
 		call.Add(gtx.Ops)
 		cl.Pop()
 		return dims
-	})
+	}
+	// Centered, moved by the drag offset, but always fully inside the window
+	// (or at least with its title bar, when it is higher than the window).
+	rec := op.Record(gtx.Ops)
+	cgtx := gtx
+	cgtx.Constraints.Min = image.Point{}
+	dims := place(cgtx)
+	call := rec.Stop()
+	center := size.Sub(dims.Size).Div(2)
+	pos := center.Add(d.off)
+	pos.X = max(0, min(pos.X, size.X-dims.Size.X))
+	pos.Y = max(0, min(pos.Y, size.Y-dims.Size.Y))
+	// Keep the offset in range, so a dialog pushed against an edge comes
+	// back at once when dragged the other way.
+	d.off = pos.Sub(center)
+	o := op.Offset(pos).Push(gtx.Ops)
+	call.Add(gtx.Ops)
+	o.Pop()
+	return layout.Dimensions{Size: size}
 }
 
 // header picks the banner or the title bar.
@@ -168,6 +247,7 @@ func (d *Dialog) banner(gtx layout.Context, th *Theme) layout.Dimensions {
 		t := float32(x) / float32(max(dims.Size.X-1, 1))
 		FillRect(gtx, image.Rectangle{Min: image.Pt(x, 0), Max: image.Pt(x+1, dims.Size.Y)}, lerp(left, right, t))
 	}
+	d.dragArea(gtx, dims.Size)
 	call.Add(gtx.Ops)
 	return dims
 }
@@ -211,6 +291,7 @@ func (d *Dialog) titlebar(gtx layout.Context, th *Theme) layout.Dimensions {
 		})
 	})
 	FillRect(gtx, image.Rectangle{Max: dims.Size}, p.HeaderBg)
+	d.dragArea(gtx, dims.Size)
 	call.Add(gtx.Ops)
 	o := offset(gtx, 0, dims.Size.Y-gtx.Dp(1))
 	HLine(gtx, p.BorderColor)

@@ -1,5 +1,6 @@
 // Package dnd accepts files dropped from the desktop (file managers) onto a
-// Gio window, which Gio itself does not support.
+// Gio window on Windows. On X11 and Wayland the patched Gio in
+// third_party/gio delivers app.FileDropEvent instead.
 package dnd
 
 import "errors"

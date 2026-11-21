@@ -44,6 +44,10 @@ type LineNumberProvider struct {
 
 	// hasCurrentLine indicates whether there is a valid current line to highlight.
 	hasCurrentLine bool
+
+	// WrapMarkers draws a small "↳" on the continuation rows of wrapped
+	// lines (LeanTerm: KWrite's dynamic word wrap indicators).
+	WrapMarkers bool
 }
 
 // NewLineNumberProvider creates a new line number provider with default settings.
@@ -144,6 +148,9 @@ func (p *LineNumberProvider) Layout(gtx layout.Context, ctx gutter.GutterContext
 	var dims layout.Dimensions
 	glyphs := make([]text.Glyph, 0)
 
+	if p.WrapMarkers {
+		p.layoutWrapMarkers(gtx, ctx)
+	}
 	for _, para := range ctx.Paragraphs {
 		// Skip paragraphs outside the viewport
 		if para.EndY < ctx.Viewport.Min.Y {
@@ -216,6 +223,45 @@ func (p *LineNumberProvider) Layout(gtx layout.Context, ctx gutter.GutterContext
 	}
 
 	return dims
+}
+
+// layoutWrapMarkers draws "↳" right-aligned on every continuation row of a
+// wrapped line, in the line numbers' color at half opacity.
+func (p *LineNumberProvider) layoutWrapMarkers(gtx layout.Context, ctx gutter.GutterContext) {
+	lh := ctx.LineHeight.Round()
+	if lh <= 0 || ctx.Colors == nil {
+		return
+	}
+	c := ctx.Colors.Text.NRGBA()
+	c.A /= 2
+	size := max(4, lh*2/5)
+	stroke := max(1, float32(gtx.Dp(1)))
+	right := float32(gtx.Constraints.Max.X) - float32(gtx.Dp(1))
+	for _, para := range ctx.Paragraphs {
+		if para.EndY <= para.StartY || para.EndY < ctx.Viewport.Min.Y {
+			continue
+		}
+		if para.StartY > ctx.Viewport.Max.Y {
+			break
+		}
+		for y := para.StartY + lh; y <= para.EndY; y += lh {
+			if y < ctx.Viewport.Min.Y || y-lh > ctx.Viewport.Max.Y {
+				continue
+			}
+			// The baseline is y; the marker sits in the row's middle.
+			mid := float32(y-ctx.Viewport.Min.Y) - float32(para.Ascent.Ceil())/2 + float32(para.Descent.Ceil())/2
+			x0, x1 := right-float32(size), right
+			var path clip.Path
+			path.Begin(gtx.Ops)
+			path.MoveTo(f32.Pt(x0, mid-float32(size)/2))
+			path.LineTo(f32.Pt(x0, mid))
+			path.LineTo(f32.Pt(x1, mid))
+			path.MoveTo(f32.Pt(x1-float32(size)/3, mid-float32(size)/3))
+			path.LineTo(f32.Pt(x1, mid))
+			path.LineTo(f32.Pt(x1-float32(size)/3, mid+float32(size)/3))
+			paint.FillShape(gtx.Ops, c, clip.Stroke{Path: path.End(), Width: stroke}.Op())
+		}
+	}
 }
 
 // createColorOp creates a paint operation for the given color.

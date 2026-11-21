@@ -21,13 +21,13 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -50,12 +50,14 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
 
-      - name: System packages (Gio headers, NSIS)
+      # The fonts are those of the CI: the font tests need a CJK fallback.
+      - name: System packages (Gio headers, NSIS, fonts for the tests)
         if: steps.check.outputs.skip != 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq nsis libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev \
-            libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev
+            libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev \
+            fonts-dejavu-core fonts-wqy-zenhei fonts-noto-color-emoji
 
       - name: Zig
         if: steps.check.outputs.skip != 'true'
@@ -66,7 +68,7 @@ jobs:
           chmod +x "$HOME/bin/zig"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         if: steps.check.outputs.skip != 'true'
         id: ghostty-cache
         with:
@@ -81,7 +83,7 @@ jobs:
           test -f "$RUNNER_TEMP/ghostty/windows/lib/pkgconfig/libghostty-vt-static.pc" ||
             GHOSTTY_SRC="$RUNNER_TEMP/ghostty-src" build/gio/build-libghostty.sh x86_64-windows-gnu "$RUNNER_TEMP/ghostty/windows"
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: steps.check.outputs.skip != 'true' && steps.ghostty-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ runner.temp }}/ghostty

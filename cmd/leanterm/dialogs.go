@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"runtime"
 	"strings"
 
 	"gioui.org/font"
@@ -16,6 +17,7 @@ import (
 	leanterm "github.com/Suvukaraz/LeanTerm2.0"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
 	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
 )
 
 // ---- message dialog (quit / delete confirmations) ---------------------------
@@ -402,69 +404,116 @@ func (u *ui) finishTreeChange() {
 
 // ---- about --------------------------------------------------------------------
 
+// projectURL is LeanTerm's home page (the About dialog's Website button).
+const projectURL = "https://github.com/Suvukaraz/LeanTerm2.0"
+
 type aboutDialog struct {
 	dlg     gtk.Dialog
 	open    bool
 	wasOpen bool
 	close   widget.Clickable
+	website widget.Clickable
+	config  widget.Clickable
+	notice  string // an error of the buttons
 }
 
-// handleAbout draws the About dialog.
+// aboutRow is a line of the About dialog's details: a muted label and the value.
+func aboutRow(th *gtk.Theme, label, value string) layout.FlexChild {
+	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+		return layout.Inset{Bottom: 3}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{}.Layout(gtx,
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					d := gtk.Text{S: label, Size: gtk.Em(0.85), Color: th.Pal.MutedFg, MaxLines: 1}.Layout(gtx, th)
+					d.Size.X = max(d.Size.X+gtx.Dp(12), gtx.Dp(120))
+					return d
+				}),
+				layout.Flexed(1, gtk.Text{S: value, Size: gtk.Em(0.85), Color: th.Pal.FgColor}.Widget(th)),
+			)
+		})
+	})
+}
+
+// handleAbout draws the About dialog: the logo at a fixed size beside the
+// name, version and description, the build's details and the buttons.
 func (u *ui) handleAbout(gtx layout.Context) {
 	d := &u.about
 	if d.open && !d.wasOpen {
 		gtx.Execute(key.FocusCmd{Tag: nil})
+		d.notice = ""
 	}
 	d.wasOpen = d.open
 	if !d.open {
 		return
 	}
 	d.dlg.Title = "About LeanTerm"
-	d.dlg.Width = 460
+	d.dlg.Width = 520
 	d.dlg.Closable = true
-	if d.dlg.CloseRequested() {
+	if d.dlg.CloseRequested() || d.close.Clicked(gtx) {
 		d.open = false
+		u.focus = true
 		return
 	}
-	close := d.close.Clicked(gtx)
+	if d.website.Clicked(gtx) {
+		if err := u.systemSvc.OpenURL(projectURL); err != nil {
+			d.notice = "The website could not be opened: " + err.Error()
+		}
+	}
+	if d.config.Clicked(gtx) {
+		if err := u.systemSvc.OpenPath(u.core.Store.ConfigDir()); err != nil {
+			d.notice = "The folder could not be opened: " + err.Error()
+		}
+	}
+	engines := strings.Join(term.Available(), ", ")
+	engine := term.Normalize(u.engineName())
+	p := u.th.Pal
 	d.dlg.Layout(gtx, u.th, func(gtx layout.Context) layout.Dimensions {
-		p := u.th.Pal
-		return layout.Inset{Top: 6, Bottom: 6}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+		return layout.Inset{Top: 4, Bottom: 4}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					lg := gtk.Logo{}
-					return lg.Layout(gtx)
+					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							// The logo takes the smaller of its constraints: give it 72px.
+							s := gtx.Dp(72)
+							gtx.Constraints = layout.Exact(image.Pt(s, s))
+							return gtk.Logo{}.Layout(gtx)
+						}),
+						layout.Rigid(layout.Spacer{Width: 16}.Layout),
+						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+								layout.Rigid(gtk.Text{S: "LeanTerm", Size: gtk.Em(1.6), Color: p.FgColor, Weight: font.Bold, MaxLines: 1}.Widget(u.th)),
+								layout.Rigid(gtk.Text{S: "Version " + leanterm.Version, Size: gtk.Em(0.9), Color: p.MutedFg, MaxLines: 1}.Widget(u.th)),
+								layout.Rigid(layout.Spacer{Height: 6}.Layout),
+								layout.Rigid(gtk.Text{S: "SSH, Telnet and SFTP connection manager for Linux and Windows, with the LeanEdit text editor.", Size: gtk.Em(0.9), Color: p.FgColor, LineHeight: 1.3}.Widget(u.th)),
+							)
+						}),
+					)
 				}),
-				layout.Rigid(layout.Spacer{Width: 16}.Layout),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					kids := []layout.FlexChild{}
-					kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return gtk.Text{S: "LeanTerm", Size: gtk.Em(1.5), Color: p.FgColor, Weight: font.Bold}.Layout(gtx, u.th)
-					}))
-					kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return gtk.Text{S: "Version " + leanterm.Version, Size: gtk.Em(0.8), Color: p.MutedFg}.Layout(gtx, u.th)
-					}))
-					kids = append(kids, layout.Rigid(layout.Spacer{Height: 6}.Layout))
-					kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return gtk.Text{S: "SSH, Telnet and SFTP connection manager for Linux and Windows, built with Go and Gio.", Size: gtk.Em(0.9), Color: p.FgColor, LineHeight: 1.4}.Layout(gtx, u.th)
-					}))
-					kids = append(kids, layout.Rigid(layout.Spacer{Height: 6}.Layout))
-					kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return gtk.Text{S: "Licensed under the GNU General Public License v3 (GPLv3)", Size: gtk.Em(0.8), Color: p.MutedFg}.Layout(gtx, u.th)
-					}))
-					return layout.Flex{Axis: layout.Vertical}.Layout(gtx, kids...)
+				layout.Rigid(layout.Spacer{Height: 14}.Layout),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions { return gtk.HLine(gtx, p.BorderColor) }),
+				layout.Rigid(layout.Spacer{Height: 10}.Layout),
+				aboutRow(u.th, "Terminal engine", engine+" (in this build: "+engines+")"),
+				aboutRow(u.th, "Built with", runtime.Version()+", Gio, "+runtime.GOOS+"/"+runtime.GOARCH),
+				aboutRow(u.th, "Configuration", u.core.Store.ConfigDir()),
+				aboutRow(u.th, "License", "GNU General Public License v3 (GPL-3.0)"),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					if d.notice == "" {
+						return layout.Dimensions{}
+					}
+					return layout.Inset{Top: 6}.Layout(gtx, gtk.Text{S: d.notice, Size: gtk.Em(0.85), Color: p.WarningFg}.Widget(u.th))
 				}),
 			)
 		})
 	},
 		func(gtx layout.Context) layout.Dimensions {
-			b := gtk.Button{Label: "Close", Icon: fonts.IconClose, Default: true}
-			return b.Layout(gtx, u.th, &d.close)
+			return gtk.Button{Label: "Website", Icon: fonts.IconExternal}.Layout(gtx, u.th, &d.website)
+		},
+		func(gtx layout.Context) layout.Dimensions {
+			return gtk.Button{Label: "Configuration Folder", Icon: fonts.IconFolderOpen}.Layout(gtx, u.th, &d.config)
+		},
+		func(gtx layout.Context) layout.Dimensions {
+			return gtk.Button{Label: "Close", Icon: fonts.IconClose, Default: true}.Layout(gtx, u.th, &d.close)
 		},
 	)
-	if close {
-		d.open = false
-	}
 }
 
 // ---- keybindings ---------------------------------------------------------------
