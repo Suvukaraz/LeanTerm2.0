@@ -3,13 +3,13 @@ Unicode true
 ####
 ## Installer of PureTerm (cmd/pureterm) for Windows, amd64.
 ## build/package-windows.sh calls it with:
-##   makensis -DINFO_PRODUCTVERSION=2.1.3 -DARG_BINARY=pureterm.exe -DARG_PUREEDIT=pureedit.exe -DOUTFILE=setup.exe gio.nsi
+##   makensis -DINFO_PRODUCTVERSION=2.1.4 -DARG_BINARY=pureterm.exe -DARG_PUREEDIT=pureedit.exe -DOUTFILE=setup.exe gio.nsi
 ## The installer is per machine (Program Files, administrator rights). The
 ## uninstall key keeps its name, so an update replaces an installed version.
 ####
 
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "2.1.3"
+    !define INFO_PRODUCTVERSION "2.1.4"
 !endif
 !ifndef ARG_BINARY
     !error "ARG_BINARY must name the pureterm.exe to install"
