@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 )
 
 // AskHandler is a callback for interactive variable substitution (<ASK:...>)

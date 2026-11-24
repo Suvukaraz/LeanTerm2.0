@@ -122,7 +122,7 @@ func ReadOnlyMode(enabled bool) EditorOption {
 }
 
 // WrapIndent aligns wrapped continuation lines to the indentation of their
-// line, as KWrite's dynamic word wrap does (LeanTerm).
+// line, as KWrite's dynamic word wrap does (PureTerm).
 func WrapIndent(enabled bool) EditorOption {
 	return func(e *Editor) {
 		e.initBuffer()
@@ -221,7 +221,7 @@ func WithDefaultGutters() EditorOption {
 }
 
 // WithWrapMarkers shows "↳" in the line number gutter on the continuation
-// rows of wrapped lines (LeanTerm: KWrite's dynamic word wrap indicators).
+// rows of wrapped lines (PureTerm: KWrite's dynamic word wrap indicators).
 // It applies to the line numbers registered before it.
 func WithWrapMarkers(enabled bool) EditorOption {
 	return func(e *Editor) {
@@ -235,14 +235,14 @@ func WithWrapMarkers(enabled bool) EditorOption {
 }
 
 // WithGutterStyle sets the gutter's background and a border line on its
-// right (LeanTerm).
+// right (PureTerm).
 func WithGutterStyle(bg, border gvcolor.Color) EditorOption {
 	return func(e *Editor) {
 		e.gutterBg, e.gutterBorder = bg, border
 	}
 }
 
-// WithWhitespace shows spaces and/or tabs in col (LeanTerm).
+// WithWhitespace shows spaces and/or tabs in col (PureTerm).
 func WithWhitespace(spaces, tabs bool, col color.NRGBA) EditorOption {
 	return func(e *Editor) {
 		e.showWhitespace, e.showTabs, e.whitespaceColor = spaces, tabs, gvcolor.MakeColor(col)

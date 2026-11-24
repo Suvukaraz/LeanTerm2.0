@@ -9,8 +9,8 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
 )
 
 // keybindings is KeybindingsPage's reference table.

@@ -57,8 +57,8 @@ func shellExecute(target string) error {
 	return windows.ShellExecute(0, verb, file, nil, nil, windows.SW_SHOWNORMAL)
 }
 
-// AppDirName is the name of LeanTerm's folder inside ConfigBaseDir.
-const AppDirName = "LeanTerm"
+// AppDirName is the name of PureTerm's folder inside ConfigBaseDir.
+const AppDirName = "PureTerm"
 
 func configBaseDir() (string, error) {
 	return os.UserConfigDir() // %APPDATA%

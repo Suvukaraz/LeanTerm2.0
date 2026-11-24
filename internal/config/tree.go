@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 	"github.com/google/uuid"
 )
 

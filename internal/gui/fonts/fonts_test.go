@@ -1,6 +1,7 @@
 package fonts
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -84,5 +85,23 @@ func TestMonospaceFallsBackForCJK(t *testing.T) {
 	}
 	if n != 2 {
 		t.Fatalf("%d glyphs", n)
+	}
+}
+
+func TestFaceRejectsGenericFamilies(t *testing.T) {
+	for _, fam := range []string{"", "Monospace", "monospace", "mono", "system-ui", "sans-serif"} {
+		if _, ok := Face(fam, "Regular"); ok {
+			t.Errorf("Face(%q) should return false for generic family", fam)
+		}
+	}
+}
+
+func TestReadFontFamilies(t *testing.T) {
+	entries := readFontFamilies(bytes.NewReader(symbolsTTF))
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if len(entries[0].Families) == 0 {
+		t.Fatal("expected at least one family name in symbolsTTF")
 	}
 }

@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/telnet"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/telnet"
 	"github.com/google/uuid"
 )
 
@@ -137,7 +137,7 @@ func (s *TelnetSession) startLocked() error {
 	s.notifyStatusLocked(fmt.Sprintf("SPAWNING:%s", cmdLine))
 
 	// 2. Greeting line in terminal
-	greeting := fmt.Sprintf("\x1b[32m=== LeanTerm: Connecting to %s (%s:%d) via Telnet ===\x1b[0m\r\n", s.conn.Title, s.conn.Host, port)
+	greeting := fmt.Sprintf("\x1b[32m=== PureTerm: Connecting to %s (%s:%d) via Telnet ===\x1b[0m\r\n", s.conn.Title, s.conn.Host, port)
 	_, _ = s.stream.Write([]byte(greeting))
 
 	// 3. Dial transport

@@ -11,7 +11,7 @@ import (
 	"gioui.org/unit"
 	"github.com/oligo/gvcode/textstyle/syntax"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
 )
 
 func TestTokensGo(t *testing.T) {

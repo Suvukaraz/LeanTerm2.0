@@ -154,8 +154,8 @@ func allowActivation() {
 	_, _, _ = procAllowSetForegroundWindow.Call(asfwAny)
 }
 
-// relaunch is how the taskbar starts a pinned LeanEdit: its own executable
-// next to this one, else this one with -leanedit.
+// relaunch is how the taskbar starts a pinned PureEdit: its own executable
+// next to this one, else this one with -pureedit.
 func relaunch(a *App) (cmd, icon string) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -165,10 +165,10 @@ func relaunch(a *App) (cmd, icon string) {
 	if _, err := os.Stat(own); err == nil {
 		return `"` + own + `"`, own + ",0"
 	}
-	if strings.EqualFold(filepath.Base(exe), LeanEdit.Exe) || a != LeanEdit {
+	if strings.EqualFold(filepath.Base(exe), PureEdit.Exe) || a != PureEdit {
 		return `"` + exe + `"`, exe + ",0"
 	}
-	return `"` + exe + `" -leanedit`, fmt.Sprintf("%s,-%d", exe, a.IconResource)
+	return `"` + exe + `" -pureedit`, fmt.Sprintf("%s,-%d", exe, a.IconResource)
 }
 
 func view(a *App, e app.ViewEvent) {
@@ -227,7 +227,7 @@ func setWindowIcon(hwnd uintptr, a *App) {
 
 // SetShortcutAppID writes the AppUserModelID into a shortcut (.lnk), so that
 // the taskbar puts the windows started from it, and the shortcut pinned
-// there, into one group. The installer calls it (leanterm.exe
+// there, into one group. The installer calls it (pureterm.exe
 // -set-shortcut-appid).
 func SetShortcutAppID(lnk, id string) error {
 	path, err := windows.UTF16PtrFromString(lnk)

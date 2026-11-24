@@ -12,7 +12,7 @@ type MigrationStep struct {
 	Migrate     func(cfg *Config) error
 }
 
-// migrations contains ordered upgrade steps for LeanTerm's configuration.
+// migrations contains ordered upgrade steps for PureTerm's configuration.
 var migrations = []MigrationStep{
 	{FromVersion: 1, ToVersion: 2, Migrate: migrateV1toV2},
 	{FromVersion: 2, ToVersion: 3, Migrate: migrateV2toV3},

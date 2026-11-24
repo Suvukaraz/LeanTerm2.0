@@ -1,5 +1,5 @@
-// Package codeedit builds LeanEdit's editor on gvcode: syntax highlighting
-// with chroma lexers and LeanTerm's editor colors.
+// Package codeedit builds PureEdit's editor on gvcode: syntax highlighting
+// with chroma lexers and PureTerm's editor colors.
 package codeedit
 
 import (
@@ -111,10 +111,10 @@ func nrgba(r, g, b, a uint8) gvcolor.Color {
 	return gvcolor.MakeColor(color.NRGBA{R: r, G: g, B: b, A: a})
 }
 
-// DarkScheme is LeanEdit's dark color scheme (the --gtk-syntax-* and
-// --gtk-editor-* colors of LeanTerm's theme).
+// DarkScheme is PureEdit's dark color scheme (the --gtk-syntax-* and
+// --gtk-editor-* colors of PureTerm's theme).
 func DarkScheme() syntax.ColorScheme {
-	cs := syntax.ColorScheme{Name: "LeanTerm dark"}
+	cs := syntax.ColorScheme{Name: "PureTerm dark"}
 	cs.Foreground = hex("#f2f2f2")
 	cs.Background = hex("#1f1f1f")
 	cs.SelectColor = nrgba(74, 144, 217, 97)

@@ -102,7 +102,7 @@ type wlDisplay struct {
 	poller        poller
 	readClipClose chan struct{}
 
-	lt wlLeanTerm // LeanTerm patch
+	lt wlPureTerm // PureTerm patch
 }
 
 type wlSeat struct {
@@ -142,8 +142,8 @@ type wlSeat struct {
 	// content is the data belonging to source.
 	content []byte
 
-	dnd wlDnD // LeanTerm patch: a drag over a window
-	// LeanTerm patch: the serial of the last button press (a drag of files
+	dnd wlDnD // PureTerm patch: a drag over a window
+	// PureTerm patch: the serial of the last button press (a drag of files
 	// from a window starts with it) and the drag of files that runs.
 	pressSerial C.uint32_t
 	dragSource  *C.struct_wl_data_source
@@ -226,7 +226,7 @@ type window struct {
 	inCompositor bool        // window is moving or being resized
 
 	clipReads chan transfer.DataEvent
-	ltDrops   chan wlDrop // LeanTerm patch: dropped files read
+	ltDrops   chan wlDrop // PureTerm patch: dropped files read
 
 	wakeups chan struct{}
 
@@ -389,7 +389,7 @@ func (d *wlDisplay) createNativeWindow(options []Option) (*window, error) {
 		return nil, errors.New("wayland: xdg_surface_get_toplevel failed")
 	}
 
-	// LeanTerm patch: the AppID option overrides ID for this window.
+	// PureTerm patch: the AppID option overrides ID for this window.
 	var idCnf Config
 	idCnf.apply(unit.Metric{}, options)
 	id := C.CString(idCnf.windowAppID())
@@ -489,7 +489,7 @@ func gio_onSeatCapabilities(data unsafe.Pointer, seat *C.struct_wl_seat, caps C.
 // content.
 func (s *wlSeat) flushOffers() {
 	for o := range s.offers {
-		if o == s.clipboard || o == s.dnd.offer { // LeanTerm patch: the drag's offer
+		if o == s.clipboard || o == s.dnd.offer { // PureTerm patch: the drag's offer
 			continue
 		}
 		// We're only interested in clipboard offers.
@@ -741,7 +741,7 @@ func gio_onRegistryGlobal(data unsafe.Pointer, reg *C.struct_wl_registry, name C
 	case "wl_data_device_manager":
 		d.dataDeviceManager = (*C.struct_wl_data_device_manager)(C.wl_registry_bind(reg, name, &C.wl_data_device_manager_interface, 3))
 		d.bindDataDevice()
-	case "xdg_activation_v1": // LeanTerm patch
+	case "xdg_activation_v1": // PureTerm patch
 		d.bindActivation(reg, name)
 	}
 }
@@ -772,7 +772,7 @@ func gio_onDataDeviceOffer(data unsafe.Pointer, dataDev *C.struct_wl_data_device
 func gio_onDataDeviceEnter(data unsafe.Pointer, dataDev *C.struct_wl_data_device, serial C.uint32_t, surf *C.struct_wl_surface, x, y C.wl_fixed_t, id *C.struct_wl_data_offer) {
 	s := callbackLoad(data).(*wlSeat)
 	s.serial = serial
-	// LeanTerm patch: files dragged over the window (flushOffers keeps the
+	// PureTerm patch: files dragged over the window (flushOffers keeps the
 	// drag's offer).
 	s.dndEnter(serial, surf, x, y, id)
 	s.flushOffers()
@@ -780,17 +780,17 @@ func gio_onDataDeviceEnter(data unsafe.Pointer, dataDev *C.struct_wl_data_device
 
 //export gio_onDataDeviceLeave
 func gio_onDataDeviceLeave(data unsafe.Pointer, dataDev *C.struct_wl_data_device) {
-	callbackLoad(data).(*wlSeat).dndLeave() // LeanTerm patch
+	callbackLoad(data).(*wlSeat).dndLeave() // PureTerm patch
 }
 
 //export gio_onDataDeviceMotion
 func gio_onDataDeviceMotion(data unsafe.Pointer, dataDev *C.struct_wl_data_device, t C.uint32_t, x, y C.wl_fixed_t) {
-	callbackLoad(data).(*wlSeat).dndMotion(x, y) // LeanTerm patch
+	callbackLoad(data).(*wlSeat).dndMotion(x, y) // PureTerm patch
 }
 
 //export gio_onDataDeviceDrop
 func gio_onDataDeviceDrop(data unsafe.Pointer, dataDev *C.struct_wl_data_device) {
-	callbackLoad(data).(*wlSeat).dndDrop() // LeanTerm patch
+	callbackLoad(data).(*wlSeat).dndDrop() // PureTerm patch
 }
 
 //export gio_onDataDeviceSelection
@@ -931,7 +931,7 @@ func gio_onPointerButton(data unsafe.Pointer, p *C.struct_wl_pointer, serial, t,
 	s := callbackLoad(data).(*wlSeat)
 	s.serial = serial
 	if state == C.WL_POINTER_BUTTON_STATE_PRESSED {
-		s.pressSerial = serial // LeanTerm patch
+		s.pressSerial = serial // PureTerm patch
 	}
 	w := s.pointerFocus
 	// From Linux: include/uapi/linux/input-event-codes.h
@@ -1445,7 +1445,7 @@ func (w *window) dispatch() {
 	case e := <-w.clipReads:
 		w.disp.readClipClose = nil
 		w.ProcessEvent(e)
-	case d := <-w.ltDrops: // LeanTerm patch
+	case d := <-w.ltDrops: // PureTerm patch
 		w.finishDrop(d)
 	case <-w.wakeups:
 		w.w.Invalidate()
@@ -2201,7 +2201,7 @@ func (d *wlDisplay) destroy() {
 		d.notify.read = 0
 	}
 	d.repeat.Stop(0)
-	d.destroyLeanTerm() // LeanTerm patch
+	d.destroyPureTerm() // PureTerm patch
 	if d.xkb != nil {
 		d.xkb.Destroy()
 		d.xkb = nil

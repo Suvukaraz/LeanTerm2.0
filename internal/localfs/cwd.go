@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/events"
 )
 
 // EventEmitter delivers events to the GUI.

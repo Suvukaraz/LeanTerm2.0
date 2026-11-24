@@ -1,9 +1,9 @@
 Unicode true
 
 ####
-## Installer of LeanTerm (cmd/leanterm) for Windows, amd64.
+## Installer of PureTerm (cmd/pureterm) for Windows, amd64.
 ## build/package-windows.sh calls it with:
-##   makensis -DINFO_PRODUCTVERSION=2.1.3 -DARG_BINARY=leanterm.exe -DARG_LEANEDIT=leanedit.exe -DOUTFILE=setup.exe gio.nsi
+##   makensis -DINFO_PRODUCTVERSION=2.1.3 -DARG_BINARY=pureterm.exe -DARG_PUREEDIT=pureedit.exe -DOUTFILE=setup.exe gio.nsi
 ## The installer is per machine (Program Files, administrator rights). The
 ## uninstall key keeps its name, so an update replaces an installed version.
 ####
@@ -12,30 +12,30 @@ Unicode true
     !define INFO_PRODUCTVERSION "2.1.3"
 !endif
 !ifndef ARG_BINARY
-    !error "ARG_BINARY must name the leanterm.exe to install"
+    !error "ARG_BINARY must name the pureterm.exe to install"
 !endif
-!ifndef ARG_LEANEDIT
-    !error "ARG_LEANEDIT must name the leanedit.exe to install"
+!ifndef ARG_PUREEDIT
+    !error "ARG_PUREEDIT must name the pureedit.exe to install"
 !endif
 !ifndef OUTFILE
-    !define OUTFILE "..\..\..\bin\leanterm_setup.exe"
+    !define OUTFILE "..\..\..\bin\pureterm_setup.exe"
 !endif
 
-!define INFO_PRODUCTNAME "LeanTerm"
-!define INFO_COMPANYNAME "LeanTerm Project"
-!define INFO_COPYRIGHT   "© 2026 LeanTerm Project, GPL-3.0"
-!define PRODUCT_EXECUTABLE "leanterm.exe"
+!define INFO_PRODUCTNAME "PureTerm"
+!define INFO_COMPANYNAME "PureTerm Project"
+!define INFO_COPYRIGHT   "© 2026 PureTerm Project, GPL-3.0"
+!define PRODUCT_EXECUTABLE "pureterm.exe"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 
-# LeanEdit: LeanTerm's text editor on its own, with an executable of its own
+# PureEdit: PureTerm's text editor on its own, with an executable of its own
 # (icon, name in "Open with" and the taskbar).
-!define LEANEDIT_EXECUTABLE "leanedit.exe"
-!define LEANEDIT_PROGID "LeanTerm.LeanEdit"
-!define LEANEDIT_CMD '"$INSTDIR\${LEANEDIT_EXECUTABLE}"'
+!define PUREEDIT_EXECUTABLE "pureedit.exe"
+!define PUREEDIT_PROGID "PureTerm.PureEdit"
+!define PUREEDIT_CMD '"$INSTDIR\${PUREEDIT_EXECUTABLE}"'
 # The AppUserModelIDs of the windows (see internal/gui/winsys): shortcuts
 # carry them too, so a pinned shortcut and its windows share a button.
-!define LEANTERM_APPID "org.leanterm.LeanTerm"
-!define LEANEDIT_APPID "org.leanterm.LeanEdit"
+!define PURETERM_APPID "org.pureterm.PureTerm"
+!define PUREEDIT_APPID "org.pureterm.PureEdit"
 
 RequestExecutionLevel admin
 
@@ -64,7 +64,7 @@ ManifestDPIAware true
 
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_COMPONENTSPAGE_SMALLDESC
-!insertmacro MUI_PAGE_COMPONENTS # LeanEdit is optional.
+!insertmacro MUI_PAGE_COMPONENTS # PureEdit is optional.
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -80,26 +80,26 @@ ShowInstDetails show
 
 Function .onInit
     ${IfNot} ${AtLeastWin10}
-        MessageBox MB_OK "LeanTerm needs Windows 10 or later."
+        MessageBox MB_OK "PureTerm needs Windows 10 or later."
         Abort
     ${EndIf}
     ${IfNot} ${RunningX64}
-        MessageBox MB_OK "LeanTerm is built for 64-bit Windows only."
+        MessageBox MB_OK "PureTerm is built for 64-bit Windows only."
         Abort
     ${EndIf}
 FunctionEnd
 
-Section "LeanTerm" SecLeanTerm
+Section "PureTerm" SecPureTerm
     SectionIn RO # always installed
     SetShellVarContext all
 
     SetOutPath $INSTDIR
     File "/oname=${PRODUCT_EXECUTABLE}" "${ARG_BINARY}"
-    File "..\leanedit.ico"
+    File "..\pureedit.ico"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${LEANTERM_APPID} "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$DESKTOP\${INFO_PRODUCTNAME}.lnk"'
+    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${PURETERM_APPID} "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$DESKTOP\${INFO_PRODUCTNAME}.lnk"'
 
     WriteUninstaller "$INSTDIR\uninstall.exe"
     WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
@@ -113,16 +113,16 @@ Section "LeanTerm" SecLeanTerm
 SectionEnd
 
 ####
-## LeanEdit: its own shortcuts and "Open with" for text files.
+## PureEdit: its own shortcuts and "Open with" for text files.
 ####
-!macro leanedit.openWith EXT
-    WriteRegStr HKLM "Software\Classes\${EXT}\OpenWithProgids" "${LEANEDIT_PROGID}" ""
+!macro pureedit.openWith EXT
+    WriteRegStr HKLM "Software\Classes\${EXT}\OpenWithProgids" "${PUREEDIT_PROGID}" ""
 !macroend
-!macro leanedit.removeOpenWith EXT
-    DeleteRegValue HKLM "Software\Classes\${EXT}\OpenWithProgids" "${LEANEDIT_PROGID}"
+!macro pureedit.removeOpenWith EXT
+    DeleteRegValue HKLM "Software\Classes\${EXT}\OpenWithProgids" "${PUREEDIT_PROGID}"
 !macroend
-# Text file types offered "Open with LeanEdit" (used for install and uninstall).
-!macro leanedit.forEachExtension MACRO
+# Text file types offered "Open with PureEdit" (used for install and uninstall).
+!macro pureedit.forEachExtension MACRO
     !insertmacro ${MACRO} ".txt"
     !insertmacro ${MACRO} ".log"
     !insertmacro ${MACRO} ".md"
@@ -157,43 +157,43 @@ SectionEnd
     !insertmacro ${MACRO} ".htm"
 !macroend
 
-Section "LeanEdit (text editor)" SecLeanEdit
+Section "PureEdit (text editor)" SecPureEdit
     SetShellVarContext all
 
     SetOutPath $INSTDIR
-    File "/oname=${LEANEDIT_EXECUTABLE}" "${ARG_LEANEDIT}"
+    File "/oname=${PUREEDIT_EXECUTABLE}" "${ARG_PUREEDIT}"
 
-    CreateShortcut "$SMPROGRAMS\LeanEdit.lnk" "$INSTDIR\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}" 0 "" "" "LeanEdit text editor"
-    CreateShortcut "$DESKTOP\LeanEdit.lnk" "$INSTDIR\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}" 0 "" "" "LeanEdit text editor"
-    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${LEANEDIT_APPID} "$SMPROGRAMS\LeanEdit.lnk" "$DESKTOP\LeanEdit.lnk"'
+    CreateShortcut "$SMPROGRAMS\PureEdit.lnk" "$INSTDIR\${PUREEDIT_EXECUTABLE}" "" "$INSTDIR\${PUREEDIT_EXECUTABLE}" 0 "" "" "PureEdit text editor"
+    CreateShortcut "$DESKTOP\PureEdit.lnk" "$INSTDIR\${PUREEDIT_EXECUTABLE}" "" "$INSTDIR\${PUREEDIT_EXECUTABLE}" 0 "" "" "PureEdit text editor"
+    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" -set-shortcut-appid ${PUREEDIT_APPID} "$SMPROGRAMS\PureEdit.lnk" "$DESKTOP\PureEdit.lnk"'
 
-    # ProgID used by "Open with": name and icon of LeanEdit, opens the file in it.
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "" "Text Document (LeanEdit)"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "FriendlyTypeName" "Text Document (LeanEdit)"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}" "AppUserModelID" "${LEANEDIT_APPID}"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\DefaultIcon" "" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationName" "LeanEdit"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationDescription" "LeanEdit text editor (LeanTerm)"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "ApplicationIcon" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\Application" "AppUserModelID" "${LEANEDIT_APPID}"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\shell\open" "FriendlyAppName" "LeanEdit"
-    WriteRegStr HKLM "Software\Classes\${LEANEDIT_PROGID}\shell\open\command" "" '${LEANEDIT_CMD} "%1"'
-    !insertmacro leanedit.forEachExtension leanedit.openWith
+    # ProgID used by "Open with": name and icon of PureEdit, opens the file in it.
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}" "" "Text Document (PureEdit)"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}" "FriendlyTypeName" "Text Document (PureEdit)"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}" "AppUserModelID" "${PUREEDIT_APPID}"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\DefaultIcon" "" "$INSTDIR\${PUREEDIT_EXECUTABLE},0"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\Application" "ApplicationName" "PureEdit"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\Application" "ApplicationDescription" "PureEdit text editor (PureTerm)"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\Application" "ApplicationIcon" "$INSTDIR\${PUREEDIT_EXECUTABLE},0"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\Application" "AppUserModelID" "${PUREEDIT_APPID}"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\shell\open" "FriendlyAppName" "PureEdit"
+    WriteRegStr HKLM "Software\Classes\${PUREEDIT_PROGID}\shell\open\command" "" '${PUREEDIT_CMD} "%1"'
+    !insertmacro pureedit.forEachExtension pureedit.openWith
     # The application itself, for "Open with" → "Choose another app".
-    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}" "FriendlyAppName" "LeanEdit"
-    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}\DefaultIcon" "" "$INSTDIR\${LEANEDIT_EXECUTABLE},0"
-    WriteRegStr HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}\shell\open\command" "" '${LEANEDIT_CMD} "%1"'
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${LEANEDIT_EXECUTABLE}" "" "$INSTDIR\${LEANEDIT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\Applications\${PUREEDIT_EXECUTABLE}" "FriendlyAppName" "PureEdit"
+    WriteRegStr HKLM "Software\Classes\Applications\${PUREEDIT_EXECUTABLE}\DefaultIcon" "" "$INSTDIR\${PUREEDIT_EXECUTABLE},0"
+    WriteRegStr HKLM "Software\Classes\Applications\${PUREEDIT_EXECUTABLE}\shell\open\command" "" '${PUREEDIT_CMD} "%1"'
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PUREEDIT_EXECUTABLE}" "" "$INSTDIR\${PUREEDIT_EXECUTABLE}"
     # Any other file Windows considers text (perceived type "text").
-    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${LEANEDIT_PROGID}" ""
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${PUREEDIT_PROGID}" ""
 
     # Tell Explorer about the new "Open with" entries.
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecLeanTerm} "LeanTerm connection manager (required)."
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecLeanEdit} "LeanEdit, LeanTerm's text editor on its own: Start menu and desktop shortcut and $\"Open with$\" for text files."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecPureTerm} "PureTerm connection manager (required)."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecPureEdit} "PureEdit, PureTerm's text editor on its own: Start menu and desktop shortcut and $\"Open with$\" for text files."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section "un.Uninstall"
@@ -202,14 +202,14 @@ Section "un.Uninstall"
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
-    # LeanEdit (nothing to do when it was not selected)
-    Delete "$SMPROGRAMS\LeanEdit.lnk"
-    Delete "$DESKTOP\LeanEdit.lnk"
-    !insertmacro leanedit.forEachExtension leanedit.removeOpenWith
-    DeleteRegValue HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${LEANEDIT_PROGID}"
-    DeleteRegKey HKLM "Software\Classes\${LEANEDIT_PROGID}"
-    DeleteRegKey HKLM "Software\Classes\Applications\${LEANEDIT_EXECUTABLE}"
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${LEANEDIT_EXECUTABLE}"
+    # PureEdit (nothing to do when it was not selected)
+    Delete "$SMPROGRAMS\PureEdit.lnk"
+    Delete "$DESKTOP\PureEdit.lnk"
+    !insertmacro pureedit.forEachExtension pureedit.removeOpenWith
+    DeleteRegValue HKLM "Software\Classes\SystemFileAssociations\text\OpenWithProgids" "${PUREEDIT_PROGID}"
+    DeleteRegKey HKLM "Software\Classes\${PUREEDIT_PROGID}"
+    DeleteRegKey HKLM "Software\Classes\Applications\${PUREEDIT_EXECUTABLE}"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PUREEDIT_EXECUTABLE}"
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 
     RMDir /r $INSTDIR

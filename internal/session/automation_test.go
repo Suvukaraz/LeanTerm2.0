@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/config"
 )
 
 type nopEmitter struct{}

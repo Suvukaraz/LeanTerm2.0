@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/vars"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/vars"
 )
 
 // automation runs the per-connection features around a session's lifecycle:

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

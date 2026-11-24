@@ -11,7 +11,7 @@ import (
 )
 
 func TestStoreSaveAndLoadRoundTrip(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-test-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-test-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -53,7 +53,7 @@ func TestStoreSaveAndLoadRoundTrip(t *testing.T) {
 }
 
 func TestStoreReadOnly(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-ro-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-ro-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -67,7 +67,7 @@ func TestStoreReadOnly(t *testing.T) {
 }
 
 func TestStoreCorruptRecovery(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-corrupt-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-corrupt-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -104,7 +104,7 @@ func TestStoreCorruptRecovery(t *testing.T) {
 }
 
 func TestStoreUnknownFields(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-unknown-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-unknown-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -140,7 +140,7 @@ unknown_legacy_key = "some_value"
 }
 
 func TestStoreAutosaveDebounce(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-autosave-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-autosave-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -166,34 +166,42 @@ func TestStoreAutosaveDebounce(t *testing.T) {
 }
 
 func TestMigrateLegacyConfigDir(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-migrate-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-migrate-*")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	legacy := filepath.Join(tmpDir, "linxterm")
-	dir := filepath.Join(tmpDir, "leanterm")
-	if err := os.MkdirAll(legacy, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(legacy, "config.toml"), []byte("x"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	for _, legacyName := range []string{"leanterm", "linxterm"} {
+		subDir, err := os.MkdirTemp("", "pureterm-migrate-sub-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(subDir)
 
-	migrateLegacyConfigDir(legacy, dir)
-	if _, err := os.Stat(filepath.Join(dir, "config.toml")); err != nil {
-		t.Fatalf("config not moved: %v", err)
-	}
-	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
-		t.Fatalf("legacy dir still exists")
-	}
+		legacy := filepath.Join(subDir, legacyName)
+		dir := filepath.Join(subDir, "pureterm")
+		if err := os.MkdirAll(legacy, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(legacy, "config.toml"), []byte("x"), 0600); err != nil {
+			t.Fatal(err)
+		}
 
-	// An existing new directory is never touched.
-	_ = os.MkdirAll(legacy, 0700)
-	migrateLegacyConfigDir(legacy, dir)
-	if _, err := os.Stat(legacy); err != nil {
-		t.Fatalf("legacy dir should be left alone: %v", err)
+		migrateLegacyConfigDir(legacy, dir)
+		if _, err := os.Stat(filepath.Join(dir, "config.toml")); err != nil {
+			t.Fatalf("%s: config not moved: %v", legacyName, err)
+		}
+		if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+			t.Fatalf("%s: legacy dir still exists", legacyName)
+		}
+
+		// An existing new directory is never touched.
+		_ = os.MkdirAll(legacy, 0700)
+		migrateLegacyConfigDir(legacy, dir)
+		if _, err := os.Stat(legacy); err != nil {
+			t.Fatalf("%s: legacy dir should be left alone: %v", legacyName, err)
+		}
 	}
 }
 

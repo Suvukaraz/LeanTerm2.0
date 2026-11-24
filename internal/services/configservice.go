@@ -4,9 +4,9 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 )
 
 type ConnectionEdit struct {

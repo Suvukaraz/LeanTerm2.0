@@ -72,7 +72,7 @@ type TextView struct {
 	// WrapLine configures whether the displayed text will be broken into lines or not.
 	WrapLine bool
 	// WrapIndent aligns wrapped continuation lines to their line's
-	// indentation (LeanTerm).
+	// indentation (PureTerm).
 	WrapIndent bool
 
 	// WordSeperators configures a set of characters that will be used as word separators
@@ -135,7 +135,7 @@ func (e *TextView) Changed() bool {
 }
 
 // SetWrapIndent aligns wrapped continuation lines to the indentation of
-// their line (LeanTerm).
+// their line (PureTerm).
 func (e *TextView) SetWrapIndent(enabled bool) {
 	if e.WrapIndent != enabled {
 		e.WrapIndent = enabled
@@ -214,7 +214,7 @@ func (e *TextView) closestToXYGraphemes(x fixed.Int26_6, y int) lt.CombinedPos {
 func (e *TextView) MoveLines(distance int, selAct SelectionAction) {
 	caretStart := e.closestToRune(e.caret.start)
 	x := caretStart.X + e.caret.xoff
-	// Seek to line. LeanTerm: skip folded lines.
+	// Seek to line. PureTerm: skip folded lines.
 	target := caretStart.LineCol.Line + distance
 	step := 1
 	if distance < 0 {
@@ -526,7 +526,7 @@ func (e *TextView) clampCursorToGraphemes() {
 }
 
 // SetHidden folds the given paragraphs (inclusive ranges of logical line
-// indices, sorted): they stay in the text but are not shown (LeanTerm: code
+// indices, sorted): they stay in the text but are not shown (PureTerm: code
 // folding).
 func (e *TextView) SetHidden(spans [][2]int) {
 	if e.layouter.SetHidden(spans) {

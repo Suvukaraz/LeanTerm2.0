@@ -31,7 +31,7 @@ func (e *TextView) calculateViewSize(gtx layout.Context) image.Point {
 
 func (e *TextView) layoutText(shaper *text.Shaper) {
 	//e.layoutByParagraph(shaper, &it)
-	e.layouter.WrapIndent = e.WrapIndent // LeanTerm
+	e.layouter.WrapIndent = e.WrapIndent // PureTerm
 	e.dims = e.layouter.Layout(shaper, &e.params, e.TabWidth, e.WrapLine)
 }
 
@@ -328,7 +328,7 @@ func (e *TextView) adjustDescentPadding() int {
 }
 
 // PaintWhitespace marks spaces with a dot and tabs with a line across their
-// width (LeanTerm: CodeMirror's highlightWhitespace).
+// width (PureTerm: CodeMirror's highlightWhitespace).
 func (e *TextView) PaintWhitespace(gtx layout.Context, col color.NRGBA, spaces, tabs bool) {
 	viewport := image.Rectangle{Min: e.scrollOff, Max: e.viewSize.Add(e.scrollOff)}
 	dot := max(1, gtx.Dp(unit.Dp(1.5)))

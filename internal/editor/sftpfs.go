@@ -72,7 +72,7 @@ func (s SFTPFS) writeFile(p string, data []byte) error {
 
 	var suffix [6]byte
 	_, _ = rand.Read(suffix[:])
-	tmpName := path.Join(path.Dir(p), "."+path.Base(p)+".leanterm-"+hex.EncodeToString(suffix[:]))
+	tmpName := path.Join(path.Dir(p), "."+path.Base(p)+".pureterm-"+hex.EncodeToString(suffix[:]))
 	tmp, err := s.Client.OpenFile(tmpName, os.O_WRONLY|os.O_CREATE|os.O_EXCL)
 	if err != nil {
 		return s.writeInPlace(p, data)

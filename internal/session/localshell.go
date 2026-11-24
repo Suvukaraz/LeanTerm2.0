@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
 	"github.com/google/uuid"
 )
 
@@ -161,7 +161,7 @@ func (ls *LocalSession) startLocked() error {
 	return nil
 }
 
-// localShellEnv returns the environment for the local shell. When LeanTerm is
+// localShellEnv returns the environment for the local shell. When PureTerm is
 // started from a desktop launcher, TERM is unset or "dumb", which makes shells
 // and tools disable colors. The PTY is rendered by an xterm-compatible engine,
 // so advertise xterm-256color with truecolor support like the SSH session does.

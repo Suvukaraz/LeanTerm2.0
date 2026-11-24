@@ -52,9 +52,9 @@ type Config struct {
 	// decoHeight is the height of the fallback decoration for platforms such
 	// as Wayland that may need fallback client-side decorations.
 	decoHeight unit.Dp
-	// appID overrides ID for this window (AppID; LeanTerm patch).
+	// appID overrides ID for this window (AppID; PureTerm patch).
 	appID string
-	// icon is the window's icon (Icon; LeanTerm patch).
+	// icon is the window's icon (Icon; PureTerm patch).
 	icon image.Image
 }
 

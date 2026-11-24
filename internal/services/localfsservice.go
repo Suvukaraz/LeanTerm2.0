@@ -3,10 +3,10 @@ package services
 import (
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/localfs"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/localfs"
+	"github.com/Suvukaraz/PureTerm/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 // LocalFSService backs the file browser of local shell tabs. Its methods mirror

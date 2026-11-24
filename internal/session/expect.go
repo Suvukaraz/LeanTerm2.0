@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/vars"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/vars"
 	"github.com/dlclark/regexp2"
 )
 

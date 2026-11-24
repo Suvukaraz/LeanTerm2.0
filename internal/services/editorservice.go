@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/editor"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/editor"
+	"github.com/Suvukaraz/PureTerm/internal/events"
 )
 
 // EditorFile identifies a file opened in the editor window.
@@ -27,16 +27,16 @@ type EditorFile struct {
 	Path string `json:"path"`
 }
 
-// EditorAppName is the editor's name, also when it runs inside LeanTerm.
-const EditorAppName = "LeanEdit"
+// EditorAppName is the editor's name, also when it runs inside PureTerm.
+const EditorAppName = "PureEdit"
 
-// EditorService backs the text editor (LeanEdit): one window with a tab per
+// EditorService backs the text editor (PureEdit): one window with a tab per
 // file, fed by Open from the file browsers or the command line. File contents
 // travel in chunks (Load/ReadChunk, BeginSave/AppendSave/CommitSave) so large
 // files do not block the bridge.
 //
-// Inside LeanTerm the window is an extra window of LeanTerm. Started on its own
-// (leanterm --leanedit) it is the only window of a separate process: closing it
+// Inside PureTerm the window is an extra window of PureTerm. Started on its own
+// (pureterm --pureedit) it is the only window of a separate process: closing it
 // quits that process, and its settings are written straight to config.toml.
 type EditorService struct {
 	mu      sync.Mutex
@@ -64,14 +64,14 @@ func (es *EditorService) SetGUI(host Host, windows EditorWindows) {
 	es.windows = windows
 }
 
-// SetStandalone switches the service to LeanEdit's own process (see the type).
+// SetStandalone switches the service to PureEdit's own process (see the type).
 func (es *EditorService) SetStandalone(standalone bool) {
 	es.mu.Lock()
 	defer es.mu.Unlock()
 	es.standalone = standalone
 }
 
-// Standalone reports whether LeanEdit runs as its own process: closing the
+// Standalone reports whether PureEdit runs as its own process: closing the
 // editor window then quits.
 func (es *EditorService) Standalone() bool {
 	es.mu.Lock()
@@ -138,24 +138,24 @@ func (es *EditorService) TakePending() []EditorFile {
 	return out
 }
 
-// NewWindow starts another LeanEdit with its own window (File → New Window),
-// also when LeanEdit runs as a single instance, and from LeanTerm's editor.
+// NewWindow starts another PureEdit with its own window (File → New Window),
+// also when PureEdit runs as a single instance, and from PureTerm's editor.
 //
-// The new LeanEdit is a process of its own, detached from this one: closing
-// LeanTerm (or the terminal it was started from) does not close it.
+// The new PureEdit is a process of its own, detached from this one: closing
+// PureTerm (or the terminal it was started from) does not close it.
 func (es *EditorService) NewWindow() error {
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	// On Windows LeanEdit has an executable of its own (its taskbar entry
-	// and icon); leanterm.exe -leanedit is the same editor.
-	if own := filepath.Join(filepath.Dir(exe), "leanedit.exe"); runtime.GOOS == "windows" {
+	// On Windows PureEdit has an executable of its own (its taskbar entry
+	// and icon); pureterm.exe -pureedit is the same editor.
+	if own := filepath.Join(filepath.Dir(exe), "pureedit.exe"); runtime.GOOS == "windows" {
 		if _, err := os.Stat(own); err == nil {
 			exe = own
 		}
 	}
-	args := []string{"--leanedit", "--new-window"}
+	args := []string{"--pureedit", "--new-window"}
 	if es.store != nil {
 		args = append(args, "--config-dir="+es.store.ConfigDir())
 	}
@@ -182,7 +182,7 @@ func (es *EditorService) CloseWindow() {
 	}
 }
 
-// ShowPreferences opens LeanEdit's own settings window (only the editor
+// ShowPreferences opens PureEdit's own settings window (only the editor
 // settings) or raises it when it is already open.
 func (es *EditorService) ShowPreferences() error {
 	es.mu.Lock()
@@ -210,7 +210,7 @@ type EditorSettings struct {
 	Editor      config.EditorConfig `json:"editor"`
 	ColorScheme string              `json:"colorScheme"`
 	IconTheme   string              `json:"iconTheme"`
-	// Standalone is true in LeanEdit's own process (no LeanTerm file browsers).
+	// Standalone is true in PureEdit's own process (no PureTerm file browsers).
 	Standalone bool `json:"standalone"`
 }
 
@@ -240,7 +240,7 @@ func (es *EditorService) SaveEditorSettings(ed config.EditorConfig) error {
 	es.mu.Unlock()
 
 	if standalone {
-		// Only the [editor] section of the file on disk changes; LeanTerm (if it
+		// Only the [editor] section of the file on disk changes; PureTerm (if it
 		// runs) reloads the file.
 		if err := es.store.UpdateOnDisk(func(cfg *config.Config) { cfg.Editor = ed }); err != nil {
 			return err
@@ -269,7 +269,7 @@ func (es *EditorService) SetUnsaved(unsaved bool) {
 }
 
 // HasUnsaved reports whether the editor window has unsaved changes (asked by
-// the main window before LeanTerm quits).
+// the main window before PureTerm quits).
 func (es *EditorService) HasUnsaved() bool {
 	es.mu.Lock()
 	windows, unsaved := es.windows, es.unsaved

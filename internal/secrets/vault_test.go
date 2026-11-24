@@ -10,7 +10,7 @@ import (
 )
 
 func TestVaultPassphraseModeRoundTripNonASCII(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-vault-pwd-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-vault-pwd-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -53,7 +53,7 @@ func TestVaultPassphraseModeRoundTripNonASCII(t *testing.T) {
 func TestVaultKeyringMode(t *testing.T) {
 	keyring.MockInit()
 
-	tmpDir, err := os.MkdirTemp("", "leanterm-vault-keyring-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-vault-keyring-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -73,7 +73,7 @@ func TestVaultKeyringMode(t *testing.T) {
 }
 
 func TestVaultMasterPasswordChange(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-vault-change-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-vault-change-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -108,7 +108,7 @@ func TestVaultMasterPasswordChange(t *testing.T) {
 }
 
 func TestVaultDuplicateAndGarbageCollect(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-vault-gc-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-vault-gc-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // Pos is a cell in buffer coordinates: Row counts from the oldest history

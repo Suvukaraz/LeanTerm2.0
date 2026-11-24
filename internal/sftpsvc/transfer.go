@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/sftp"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
 )
 
 // TransferOptions mirror the [sftp_browser] transfer preferences.

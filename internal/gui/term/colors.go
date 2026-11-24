@@ -13,7 +13,7 @@ type Colors struct {
 	Palette *[256]color.NRGBA
 }
 
-// DefaultColors is LeanTerm's default scheme: light grey on black with the
+// DefaultColors is PureTerm's default scheme: light grey on black with the
 // xterm palette.
 func DefaultColors() Colors {
 	p := XtermPalette()

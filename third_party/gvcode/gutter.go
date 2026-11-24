@@ -35,7 +35,7 @@ func (e *Editor) buildGutterContext(gtx layout.Context, shaper *text.Shaper) gut
 			break
 		}
 		if p.Hidden {
-			continue // LeanTerm: folded lines have no gutter
+			continue // PureTerm: folded lines have no gutter
 		}
 		paragraphs = append(paragraphs, gutter.Paragraph{
 			StartY:  p.StartY,
@@ -93,7 +93,7 @@ func (e *Editor) gutterColors() *gutter.GutterColors {
 	return &gutter.GutterColors{
 		Text:          text,
 		TextHighlight: highlight,
-		Background:    e.gutterBg, // LeanTerm: transparent unless set
+		Background:    e.gutterBg, // PureTerm: transparent unless set
 		LineHighlight: lineHighlight,
 		Custom:        nil,
 	}

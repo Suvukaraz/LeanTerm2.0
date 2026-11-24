@@ -105,7 +105,7 @@ jobs:
           bash build/package-deb.sh "$VERSION"
           bash build/package-tarball.sh "$VERSION"
           # The binary must not need a newer glibc than 2.34.
-          objdump -T bin/leanterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+          objdump -T bin/pureterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
 
       - name: Build Windows installer
         if: steps.check.outputs.skip != 'true'
@@ -121,8 +121,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir dist
-          cp "bin/leanterm_${VERSION}_amd64.deb" "bin/leanterm_${VERSION}_linux_amd64.tar.gz" \
-             "bin/leanterm_${VERSION}_windows_amd64_setup.exe" dist/
+          cp "bin/pureterm_${VERSION}_amd64.deb" "bin/pureterm_${VERSION}_linux_amd64.tar.gz" \
+             "bin/pureterm_${VERSION}_windows_amd64_setup.exe" dist/
           (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
           # Creates the tag on this commit unless it was pushed already.
           gh release create "$TAG" dist/* --target "$GITHUB_SHA" \

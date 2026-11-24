@@ -1,8 +1,8 @@
 bin
 build/deb-root
-cmd/leanterm/rsrc*.syso
-cmd/leanterm/rsrc
-/leanterm
-/leanterm.exe
-/leanedit.exe
-cmd/leanterm/leanterm
+cmd/pureterm/rsrc*.syso
+cmd/pureterm/rsrc
+/pureterm
+/pureterm.exe
+/pureedit.exe
+cmd/pureterm/pureterm

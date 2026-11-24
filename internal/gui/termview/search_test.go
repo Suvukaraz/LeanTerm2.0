@@ -3,7 +3,7 @@ package termview
 import (
 	"testing"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 func plainRow(s string) SearchRow {

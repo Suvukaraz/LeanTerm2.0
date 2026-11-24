@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/config"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )

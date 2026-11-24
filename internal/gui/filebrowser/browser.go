@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 // Kind is the browser's backend: SFTP (SSH tabs) or the local file system

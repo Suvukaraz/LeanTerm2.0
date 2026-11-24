@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 // fakeBackend is a file system of folders with file names.

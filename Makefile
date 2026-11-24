@@ -3,7 +3,7 @@
 all: build
 
 build:
-	go build -o bin/leanterm ./cmd/leanterm
+	go build -o bin/pureterm ./cmd/pureterm
 
 test:
 	go test -race ./...

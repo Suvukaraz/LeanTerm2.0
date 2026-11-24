@@ -46,7 +46,7 @@ type LineNumberProvider struct {
 	hasCurrentLine bool
 
 	// WrapMarkers draws a small "↳" on the continuation rows of wrapped
-	// lines (LeanTerm: KWrite's dynamic word wrap indicators).
+	// lines (PureTerm: KWrite's dynamic word wrap indicators).
 	WrapMarkers bool
 }
 

@@ -1,4 +1,4 @@
-// Package editor backs LeanTerm's text editor window: decoding and encoding file
+// Package editor backs PureTerm's text editor window: decoding and encoding file
 // contents (character set, line endings) and reading/writing local or remote files.
 package editor
 

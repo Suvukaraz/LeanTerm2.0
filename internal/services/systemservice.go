@@ -10,14 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	leanterm "github.com/Suvukaraz/LeanTerm2.0"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/wol"
+	pureterm "github.com/Suvukaraz/PureTerm"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/wol"
 )
 
-// Version is the version of LeanTerm (About dialog), from the VERSION file.
-var Version = leanterm.Version
+// Version is the version of PureTerm (About dialog), from the VERSION file.
+var Version = pureterm.Version
 
 type SystemService struct {
 	host          Host
@@ -176,7 +176,7 @@ func (ss *SystemService) OpenPath(path string) error {
 
 func (ss *SystemService) AppInfo() map[string]string {
 	return map[string]string{
-		"name":        "LeanTerm",
+		"name":        "PureTerm",
 		"version":     Version,
 		"license":     "GPLv3",
 		"description": "SSH, Telnet and SFTP connection manager for Linux and Windows (Go)",

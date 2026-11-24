@@ -1,18 +1,18 @@
-// Package singleinstance lets a second standalone LeanEdit hand its files to
+// Package singleinstance lets a second standalone PureEdit hand its files to
 // the one that is already running.
 //
 // The running instance listens on a loopback port and writes the port, a
-// random token and its process id to leanedit.lock in the configuration
+// random token and its process id to pureedit.lock in the configuration
 // folder (mode 0600). A second instance reads the file, connects, sends the
 // token, the absolute file paths and the desktop's activation token (so the
 // running window may come to the front) as one JSON line, waits for the
 // answer and exits. A lock file of a process that is gone, or that nobody
 // answers for, is stale and is replaced.
 //
-// Only standalone LeanEdit processes take part: the editor window inside
-// LeanTerm never takes files from other programs, so a LeanEdit started from
-// the desktop does not attach to it (and LeanTerm's remote files stay in
-// LeanTerm).
+// Only standalone PureEdit processes take part: the editor window inside
+// PureTerm never takes files from other programs, so a PureEdit started from
+// the desktop does not attach to it (and PureTerm's remote files stay in
+// PureTerm).
 package singleinstance
 
 import (
@@ -32,7 +32,7 @@ import (
 )
 
 // LockFile is the name of the lock file in the configuration folder.
-const LockFile = "leanedit.lock"
+const LockFile = "pureedit.lock"
 
 const (
 	dialTimeout = time.Second

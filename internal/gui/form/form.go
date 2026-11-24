@@ -14,7 +14,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
 )
 
 // Form holds the widgets of one dialog.

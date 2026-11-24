@@ -2,27 +2,27 @@ package fonts
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 
 	"gioui.org/font"
-	"gioui.org/font/opentype"
 )
 
 var (
 	faceMu    sync.Mutex
 	faceCache = map[string]*font.FontFace{}
-	scanned   []font.FontFace
-	scanOnce  sync.Once
 )
 
 // Face loads the face of an installed font family in a style ("Bold",
 // "Italic", ...), e.g. for previews in the font chooser. On Linux fontconfig
-// finds the file; elsewhere the font folders are read once.
+// finds the file; on Windows the font registry and lightweight 'name' table
+// indexing find only the matching files.
 func Face(family, style string) (font.FontFace, bool) {
+	if isGenericFamily(family) {
+		return font.FontFace{}, false
+	}
 	key := family + "\x00" + style
 	faceMu.Lock()
 	if f, ok := faceCache[key]; ok {
@@ -45,37 +45,12 @@ func Face(family, style string) (font.FontFace, bool) {
 	return f, ok
 }
 
-func findFace(family, style string) (font.FontFace, bool) {
-	if runtime.GOOS == "linux" {
-		if fc, err := exec.LookPath("fc-match"); err == nil {
-			pattern := family
-			if style != "" {
-				pattern += ":style=" + style
-			}
-			out, err := exec.Command(fc, "-f", "%{family}\n%{file}", pattern).Output()
-			lines := strings.SplitN(string(out), "\n", 2)
-			// fontconfig substitutes another family for an unknown one.
-			if err == nil && len(lines) == 2 && familyMatches(lines[0], family) {
-				if data, err := os.ReadFile(lines[1]); err == nil {
-					if faces, err := opentype.ParseCollection(data); err == nil && len(faces) > 0 {
-						return pick(faces, style), true
-					}
-				}
-			}
-			return font.FontFace{}, false
-		}
+func isGenericFamily(family string) bool {
+	switch strings.ToLower(strings.TrimSpace(family)) {
+	case "", "mono", "monospace", "sans", "sans-serif", "system-ui", "serif":
+		return true
 	}
-	scanOnce.Do(scanFolders)
-	var matches []font.FontFace
-	for _, f := range scanned {
-		if strings.EqualFold(string(f.Font.Typeface), family) {
-			matches = append(matches, f)
-		}
-	}
-	if len(matches) == 0 {
-		return font.FontFace{}, false
-	}
-	return pick(matches, style), true
+	return false
 }
 
 // familyMatches compares a family with fontconfig's list of names for it.
@@ -129,18 +104,68 @@ func pick(faces []font.FontFace, style string) font.FontFace {
 	return best
 }
 
-func scanFolders() {
-	var dirs []string
-	if runtime.GOOS == "windows" {
-		dirs = append(dirs, filepath.Join(os.Getenv("WINDIR"), "Fonts"))
-		if la := os.Getenv("LOCALAPPDATA"); la != "" {
-			dirs = append(dirs, filepath.Join(la, "Microsoft", "Windows", "Fonts"))
-		}
-	} else {
-		home, _ := os.UserHomeDir()
-		dirs = append(dirs, "/usr/share/fonts", "/usr/local/share/fonts", filepath.Join(home, ".fonts"), filepath.Join(home, ".local", "share", "fonts"))
+// indexFontFiles reads only SFNT 'name' tables in parallel across the given
+// files, returning a lowercase-family -> []fontRef lookup map.
+func indexFontFiles(paths []string) map[string][]fontRef {
+	index := map[string][]fontRef{}
+	if len(paths) == 0 {
+		return index
 	}
+	workers := min(max(runtime.GOMAXPROCS(0), 2), 8)
+	ch := make(chan string, len(paths))
+	for _, p := range paths {
+		ch <- p
+	}
+	close(ch)
+
+	type item struct {
+		family string
+		ref    fontRef
+	}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var local []item
+			for p := range ch {
+				f, err := os.Open(p)
+				if err != nil {
+					continue
+				}
+				entries := readFontFamilies(f)
+				_ = f.Close()
+				for _, e := range entries {
+					for _, fam := range e.Families {
+						local = append(local, item{
+							family: strings.ToLower(fam),
+							ref:    fontRef{Path: p, Index: e.Index},
+						})
+					}
+				}
+			}
+			if len(local) == 0 {
+				return
+			}
+			mu.Lock()
+			for _, it := range local {
+				index[it.family] = append(index[it.family], it.ref)
+			}
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+	return index
+}
+
+func collectFontPaths(dirs []string) []string {
+	var paths []string
+	seen := map[string]bool{}
 	for _, d := range dirs {
+		if d == "" {
+			continue
+		}
 		_ = filepath.WalkDir(d, func(path string, e os.DirEntry, err error) error {
 			if err != nil || e.IsDir() {
 				return nil
@@ -150,14 +175,13 @@ func scanFolders() {
 			default:
 				return nil
 			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			if faces, err := opentype.ParseCollection(data); err == nil {
-				scanned = append(scanned, faces...)
+			key := strings.ToLower(path)
+			if !seen[key] {
+				seen[key] = true
+				paths = append(paths, path)
 			}
 			return nil
 		})
 	}
+	return paths
 }

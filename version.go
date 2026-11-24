@@ -1,7 +1,7 @@
-// Package leanterm holds the version of LeanTerm. The release version is kept
+// Package pureterm holds the version of PureTerm. The release version is kept
 // in the VERSION file, which the packages, the installer and the workflows read
 // as well.
-package leanterm
+package pureterm
 
 import (
 	_ "embed"

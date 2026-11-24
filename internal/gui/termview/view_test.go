@@ -16,8 +16,8 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // fakeEngine records the input the view sends; lines is its screen text

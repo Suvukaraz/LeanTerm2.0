@@ -6,7 +6,7 @@ import (
 
 	"github.com/odvcencio/gotreesitter"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/symbols"
+	"github.com/Suvukaraz/PureTerm/internal/gui/symbols"
 )
 
 // Result is what a parse found in the text of generation Gen: the
@@ -45,7 +45,7 @@ type request struct {
 	text string
 }
 
-// NewParser starts a parser for a LeanEdit language. It returns nil when
+// NewParser starts a parser for a PureEdit language. It returns nil when
 // the language has no grammar (no folding). notify is called (from the
 // worker goroutine) when a result is ready.
 func NewParser(langID string, notify func()) *Parser {
@@ -59,7 +59,7 @@ func NewParser(langID string, notify func()) *Parser {
 	return p
 }
 
-// Language is the LeanEdit language id of the parser.
+// Language is the PureEdit language id of the parser.
 func (p *Parser) Language() string { return p.langID }
 
 // Update asks for a parse of text, the document's generation gen.

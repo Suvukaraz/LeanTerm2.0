@@ -11,9 +11,9 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/session"
 )
 
 type pending struct {
@@ -209,7 +209,7 @@ func (p *Prompter) Layout(gtx layout.Context, th *gtk.Theme) layout.Dimensions {
 
 	p.dlg.Title = req.Title
 	if p.dlg.Title == "" {
-		p.dlg.Title = "LeanTerm"
+		p.dlg.Title = "PureTerm"
 	}
 	p.dlg.Width = 420
 	if isHostKey(req) {

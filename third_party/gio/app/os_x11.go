@@ -120,7 +120,7 @@ type x11Window struct {
 	handler     x11EventHandler
 	buf         [100]byte
 
-	lt x11LeanTerm // LeanTerm patch
+	lt x11PureTerm // PureTerm patch
 }
 
 var (
@@ -662,7 +662,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			if bevt._type == C.ButtonRelease {
 				ev.Kind = pointer.Release
 				if bevt.button == C.Button1 {
-					w.dragRelease(bevt) // LeanTerm patch: a drag of files ends
+					w.dragRelease(bevt) // PureTerm patch: a drag of files ends
 				}
 			}
 			var btn pointer.Buttons
@@ -712,7 +712,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			w.ProcessEvent(ev)
 		case C.MotionNotify:
 			mevt := (*C.XMotionEvent)(unsafe.Pointer(xev))
-			w.dragMotion(mevt) // LeanTerm patch: a drag of files
+			w.dragMotion(mevt) // PureTerm patch: a drag of files
 			w.ProcessEvent(pointer.Event{
 				Kind:    pointer.Move,
 				Source:  pointer.Mouse,
@@ -744,7 +744,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			// redraw will be done by a later expose event
 		case C.SelectionNotify:
 			cevt := (*C.XSelectionEvent)(unsafe.Pointer(xev))
-			if w.xdndSelection(cevt) { // LeanTerm patch: dropped files
+			if w.xdndSelection(cevt) { // PureTerm patch: dropped files
 				break
 			}
 			prop := w.atoms.clipboardContent
@@ -772,7 +772,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			})
 		case C.SelectionRequest:
 			cevt := (*C.XSelectionRequestEvent)(unsafe.Pointer(xev))
-			if w.dragSelectionRequest(cevt) { // LeanTerm patch: dragged files
+			if w.dragSelectionRequest(cevt) { // PureTerm patch: dragged files
 				break
 			}
 			if (cevt.selection != w.atoms.clipboard && cevt.selection != w.atoms.primary) || cevt.property == C.None {
@@ -821,7 +821,7 @@ func (h *x11EventHandler) handleEvents() bool {
 			}
 		case C.ClientMessage: // extensions
 			cevt := (*C.XClientMessageEvent)(unsafe.Pointer(xev))
-			if w.xdndMessage(cevt) { // LeanTerm patch: XDND
+			if w.xdndMessage(cevt) { // PureTerm patch: XDND
 				break
 			}
 			switch *(*C.long)(unsafe.Pointer(&cevt.data)) {
@@ -927,7 +927,7 @@ func newX11Window(gioWin *callbacks, options []Option) error {
 	hints.flags = C.InputHint
 	C.XSetWMHints(dpy, win, &hints)
 
-	// LeanTerm patch: the AppID option overrides ID for this window.
+	// PureTerm patch: the AppID option overrides ID for this window.
 	name := C.CString(cnf.windowAppID())
 	defer C.free(unsafe.Pointer(name))
 	wmhints := C.XClassHint{name, name}
@@ -948,7 +948,7 @@ func newX11Window(gioWin *callbacks, options []Option) error {
 	w.atoms.wmActiveWindow = w.atom("_NET_ACTIVE_WINDOW", false)
 	w.atoms.wmStateMaximizedHorz = w.atom("_NET_WM_STATE_MAXIMIZED_HORZ", false)
 	w.atoms.wmStateMaximizedVert = w.atom("_NET_WM_STATE_MAXIMIZED_VERT", false)
-	w.initLeanTerm(cnf) // LeanTerm patch: XDND, icon, _NET_WM_PID
+	w.initPureTerm(cnf) // PureTerm patch: XDND, icon, _NET_WM_PID
 
 	// extensions
 	C.XSetWMProtocols(dpy, win, &w.atoms.evDelWindow, 1)

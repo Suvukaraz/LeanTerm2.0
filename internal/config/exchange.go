@@ -11,7 +11,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 	"github.com/dlclark/regexp2"
 	"github.com/google/uuid"
 	toml "github.com/pelletier/go-toml/v2"
@@ -209,7 +209,7 @@ func ExportFull(cfg *Config, vault *secrets.Vault, filePath string, debug bool, 
 	return os.WriteFile(filePath, data, 0600)
 }
 
-// ImportNodes imports groups and connections from a LeanTerm export TOML file.
+// ImportNodes imports groups and connections from a PureTerm export TOML file.
 func ImportNodes(targetCfg *Config, vault *secrets.Vault, parentGroupID, filePath string, passphrase string) (*ImportReport, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -222,7 +222,7 @@ func ImportNodes(targetCfg *Config, vault *secrets.Vault, parentGroupID, filePat
 	}
 
 	if doc.ExportVersion == 0 {
-		return nil, errors.New("invalid or unrecognized export file (only LeanTerm format is supported)")
+		return nil, errors.New("invalid or unrecognized export file (only PureTerm format is supported)")
 	}
 
 	report := &ImportReport{

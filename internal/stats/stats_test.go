@@ -7,7 +7,7 @@ import (
 )
 
 func TestStatsManager(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-stats-test-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-stats-test-*")
 	if err != nil {
 		t.Fatal(err)
 	}

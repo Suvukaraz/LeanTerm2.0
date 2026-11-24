@@ -13,8 +13,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 // FileEntry and VFSInfo are shared with the SFTP browser so the GUI uses one model.

@@ -43,9 +43,9 @@ type Editor struct {
 	gutterGap unit.Dp
 	// gutterManager manages multiple gutter providers (line numbers, breakpoints, etc.)
 	gutterManager *gutter.Manager
-	// LeanTerm: the gutter's own background and a line on its right side.
+	// PureTerm: the gutter's own background and a line on its right side.
 	gutterBg, gutterBorder gvcolor.Color
-	// LeanTerm: dots for spaces and lines for tabs.
+	// PureTerm: dots for spaces and lines for tabs.
 	showWhitespace  bool // spaces
 	showTabs        bool
 	whitespaceColor gvcolor.Color
@@ -217,7 +217,7 @@ func (e *Editor) Layout(gtx layout.Context, lt *text.Shaper) layout.Dimensions {
 				dims := layout.Inset{Right: max(0, e.gutterGap)}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						d := e.gutterManager.Layout(gtx, ctx)
-						// LeanTerm: border-right of the gutter.
+						// PureTerm: border-right of the gutter.
 						if e.gutterBorder.IsSet() && d.Size.X > 0 {
 							r := clip.Rect(image.Rect(d.Size.X-max(1, gtx.Dp(1)), 0, d.Size.X, gtx.Constraints.Max.Y)).Push(gtx.Ops)
 							paint.ColorOp{Color: e.gutterBorder.NRGBA()}.Add(gtx.Ops)
@@ -299,7 +299,7 @@ func (e *Editor) layout(gtx layout.Context) layout.Dimensions {
 		}
 
 		e.paintText(gtx, textColor)
-		// LeanTerm: whitespace markers.
+		// PureTerm: whitespace markers.
 		if e.showWhitespace || e.showTabs {
 			e.text.PaintWhitespace(gtx, e.whitespaceColor.NRGBA(), e.showWhitespace, e.showTabs)
 		}
@@ -562,13 +562,13 @@ func (e *Editor) InsertLine(s string) (insertedRunes int) {
 	return
 }
 
-// Undo reverts the last operation(s) (LeanTerm: exported for menus).
+// Undo reverts the last operation(s) (PureTerm: exported for menus).
 func (e *Editor) Undo() bool {
 	_, ok := e.undo()
 	return ok
 }
 
-// Redo repeats the last undone operation (LeanTerm: exported for menus).
+// Redo repeats the last undone operation (PureTerm: exported for menus).
 func (e *Editor) Redo() bool {
 	_, ok := e.redo()
 	return ok
@@ -786,7 +786,7 @@ func (e *Editor) SetCaret(start, end int) {
 
 // SetHiddenLines folds the given logical lines (inclusive, 0-based ranges,
 // sorted and not overlapping): they stay in the text but take no space and
-// are not painted, and the caret moves over them vertically (LeanTerm: code
+// are not painted, and the caret moves over them vertically (PureTerm: code
 // folding).
 func (e *Editor) SetHiddenLines(spans [][2]int) {
 	e.initBuffer()

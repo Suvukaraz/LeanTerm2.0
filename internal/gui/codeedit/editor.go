@@ -15,7 +15,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/oligo/gvcode"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
 )
 
 // Editor is one open document: a gvcode editor with highlighting.
@@ -101,7 +101,7 @@ func (e *Editor) Language() string {
 	return e.lexer.Config().Name
 }
 
-// StatusFields are the fields of LeanEdit's status bar: position on the left,
+// StatusFields are the fields of PureEdit's status bar: position on the left,
 // mode, indentation, encoding, line endings and language on the right.
 func (e *Editor) StatusFields() (left string, right []string) {
 	line, col := e.CaretPos()

@@ -16,7 +16,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
 )
 
 // FileChooserButton shows a chosen file or folder:

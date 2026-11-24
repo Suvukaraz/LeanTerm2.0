@@ -1,25 +1,25 @@
 #!/bin/sh
-# LeanTerm installer for Linux (x86_64).
+# PureTerm installer for Linux (x86_64).
 #
-#   curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/Suvukaraz/PureTerm/main/install.sh | sh
 #
 # Options (pass them after "sh -s --"):
 #   --version X.Y.Z   install this release instead of the latest one
-#   --uninstall       remove LeanTerm (the configuration in ~/.config/leanterm is kept)
+#   --uninstall       remove PureTerm (the configuration in ~/.config/pureterm is kept)
 #   --help            show this help
 #
 # Debian, Ubuntu and derivatives get the .deb package through apt. Fedora/RHEL,
 # openSUSE and Arch get the required libraries from their package manager and
-# LeanTerm itself in /usr/local. Running the script again updates LeanTerm.
+# PureTerm itself in /usr/local. Running the script again updates PureTerm.
 #
-# Environment: LEANTERM_VERSION (like --version), LEANTERM_PREFIX (default
-# /usr/local), LEANTERM_BASE_URL (download folder, for tests).
+# Environment: PURETERM_VERSION (like --version), PURETERM_PREFIX (default
+# /usr/local), PURETERM_BASE_URL (download folder, for tests).
 
 set -eu
 
-REPO="Suvukaraz/LeanTerm2.0"
-PREFIX="${LEANTERM_PREFIX:-/usr/local}"
-MANIFEST="$PREFIX/share/leanterm/installed-files"
+REPO="Suvukaraz/PureTerm"
+PREFIX="${PURETERM_PREFIX:-/usr/local}"
+MANIFEST="$PREFIX/share/pureterm/installed-files"
 TMP=""
 SUDO=""
 
@@ -33,14 +33,14 @@ has() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
 	cat <<'USAGE'
-LeanTerm installer for Linux (x86_64)
+PureTerm installer for Linux (x86_64)
 
-  curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh
-  curl -fsSL https://raw.githubusercontent.com/Suvukaraz/LeanTerm2.0/main/install.sh | sh -s -- [options]
+  curl -fsSL https://raw.githubusercontent.com/Suvukaraz/PureTerm/main/install.sh | sh
+  curl -fsSL https://raw.githubusercontent.com/Suvukaraz/PureTerm/main/install.sh | sh -s -- [options]
 
 Options:
   --version X.Y.Z   install this release instead of the latest one
-  --uninstall       remove LeanTerm (the configuration in ~/.config/leanterm is kept)
+  --uninstall       remove PureTerm (the configuration in ~/.config/pureterm is kept)
   --help            show this help
 USAGE
 }
@@ -110,7 +110,7 @@ check_system() {
 	[ "$(uname -s)" = "Linux" ] || die "this installer is for Linux; for Windows use the installer from https://github.com/$REPO/releases"
 	case "$(uname -m)" in
 	x86_64 | amd64) ;;
-	*) die "LeanTerm is built for x86_64 only (this system: $(uname -m))" ;;
+	*) die "PureTerm is built for x86_64 only (this system: $(uname -m))" ;;
 	esac
 	# The binary needs glibc 2.34 or newer (no musl, e.g. Alpine).
 	glibc=$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d ' ' -f 2 || true)
@@ -155,7 +155,7 @@ ldconfig_p() {
 	done
 }
 
-# The libraries LeanTerm links against (a desktop normally has them already).
+# The libraries PureTerm links against (a desktop normally has them already).
 missing_libraries() {
 	cache=$(ldconfig_p)
 	for lib in libEGL.so.1 libGLESv2.so.2 libwayland-client.so.0 libwayland-egl.so.1 libwayland-cursor.so.0 \
@@ -173,14 +173,14 @@ missing_libraries() {
 install_deb() {
 	say "Updating the package lists"
 	as_root apt-get update -qq
-	file="leanterm_${VERSION}_amd64.deb"
+	file="pureterm_${VERSION}_amd64.deb"
 	download "$file"
 	# apt reads the file as user _apt.
 	chmod 0755 "$TMP"
 	chmod 0644 "$TMP/$file"
 	say "Installing $file"
 	as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "$TMP/$file"
-	BIN=/usr/bin/leanterm
+	BIN=/usr/bin/pureterm
 }
 
 install_dependencies() { # family
@@ -189,14 +189,14 @@ install_dependencies() { # family
 		say "Installing the graphics and window system libraries (dnf)"
 		as_root dnf install -y mesa-libEGL mesa-libGLES libwayland-client libwayland-egl libwayland-cursor \
 			libxkbcommon libxkbcommon-x11 libX11 libX11-xcb libXcursor libXfixes libXrender libffi ||
-			die "could not install the libraries of LeanTerm (EGL, GLES, Wayland, X11, xkbcommon)"
+			die "could not install the libraries of PureTerm (EGL, GLES, Wayland, X11, xkbcommon)"
 		;;
 	zypper)
 		say "Installing the graphics and window system libraries (zypper)"
 		as_root zypper --non-interactive install Mesa-libEGL1 Mesa-libGLESv2-2 libwayland-client0 libwayland-egl1 \
 			libwayland-cursor0 libxkbcommon0 libxkbcommon-x11-0 libX11-6 libX11-xcb1 libXcursor1 libXfixes3 \
 			libXrender1 libffi8 ||
-			die "could not install the libraries of LeanTerm (EGL, GLES, Wayland, X11, xkbcommon)"
+			die "could not install the libraries of PureTerm (EGL, GLES, Wayland, X11, xkbcommon)"
 		;;
 	pacman)
 		say "Installing the graphics and window system libraries (pacman)"
@@ -205,7 +205,7 @@ install_dependencies() { # family
 		# shellcheck disable=SC2086
 		as_root pacman -S --needed --noconfirm $pkgs 2>/dev/null ||
 			as_root pacman -Syu --needed --noconfirm $pkgs ||
-			die "could not install the libraries of LeanTerm"
+			die "could not install the libraries of PureTerm"
 		;;
 	*)
 		missing=$(missing_libraries)
@@ -217,39 +217,39 @@ install_dependencies() { # family
 }
 
 install_tarball() {
-	name="leanterm_${VERSION}_linux_amd64"
+	name="pureterm_${VERSION}_linux_amd64"
 	download "$name.tar.gz"
 	tar -xzf "$TMP/$name.tar.gz" -C "$TMP"
 	src="$TMP/$name"
 
-	say "Installing LeanTerm to $PREFIX"
+	say "Installing PureTerm to $PREFIX"
 	files="$TMP/installed-files"
 	: >"$files"
 	put() { # mode source target
 		as_root install -D -m "$1" "$2" "$3"
 		echo "$3" >>"$files"
 	}
-	put 0755 "$src/leanterm" "$PREFIX/bin/leanterm"
-	sed "s|^Exec=leanterm|Exec=$PREFIX/bin/leanterm|" "$src/org.leanterm.LeanTerm.desktop" >"$TMP/org.leanterm.LeanTerm.desktop"
-	put 0644 "$TMP/org.leanterm.LeanTerm.desktop" "$PREFIX/share/applications/org.leanterm.LeanTerm.desktop"
+	put 0755 "$src/pureterm" "$PREFIX/bin/pureterm"
+	sed "s|^Exec=pureterm|Exec=$PREFIX/bin/pureterm|" "$src/org.pureterm.PureTerm.desktop" >"$TMP/org.pureterm.PureTerm.desktop"
+	put 0644 "$TMP/org.pureterm.PureTerm.desktop" "$PREFIX/share/applications/org.pureterm.PureTerm.desktop"
 	for size in 16 24 32 48 64 128 256 512; do
-		put 0644 "$src/icons/leanterm-$size.png" "$PREFIX/share/icons/hicolor/${size}x${size}/apps/leanterm.png"
+		put 0644 "$src/icons/pureterm-$size.png" "$PREFIX/share/icons/hicolor/${size}x${size}/apps/pureterm.png"
 	done
-	put 0644 "$src/icons/leanterm.svg" "$PREFIX/share/icons/hicolor/scalable/apps/leanterm.svg"
-	# LeanEdit, the text editor on its own (archives of older releases do not have it)
-	if [ -f "$src/org.leanterm.LeanEdit.desktop" ]; then
-		put 0755 "$src/leanedit" "$PREFIX/bin/leanedit"
-		sed "s|^Exec=leanedit|Exec=$PREFIX/bin/leanedit|" "$src/org.leanterm.LeanEdit.desktop" >"$TMP/org.leanterm.LeanEdit.desktop"
-		put 0644 "$TMP/org.leanterm.LeanEdit.desktop" "$PREFIX/share/applications/org.leanterm.LeanEdit.desktop"
+	put 0644 "$src/icons/pureterm.svg" "$PREFIX/share/icons/hicolor/scalable/apps/pureterm.svg"
+	# PureEdit, the text editor on its own (archives of older releases do not have it)
+	if [ -f "$src/org.pureterm.PureEdit.desktop" ]; then
+		put 0755 "$src/pureedit" "$PREFIX/bin/pureedit"
+		sed "s|^Exec=pureedit|Exec=$PREFIX/bin/pureedit|" "$src/org.pureterm.PureEdit.desktop" >"$TMP/org.pureterm.PureEdit.desktop"
+		put 0644 "$TMP/org.pureterm.PureEdit.desktop" "$PREFIX/share/applications/org.pureterm.PureEdit.desktop"
 		for size in 16 24 32 48 64 128 256 512; do
-			put 0644 "$src/icons/leanedit-$size.png" "$PREFIX/share/icons/hicolor/${size}x${size}/apps/leanedit.png"
+			put 0644 "$src/icons/pureedit-$size.png" "$PREFIX/share/icons/hicolor/${size}x${size}/apps/pureedit.png"
 		done
-		put 0644 "$src/icons/leanedit.svg" "$PREFIX/share/icons/hicolor/scalable/apps/leanedit.svg"
+		put 0644 "$src/icons/pureedit.svg" "$PREFIX/share/icons/hicolor/scalable/apps/pureedit.svg"
 	fi
 	echo "$MANIFEST" >>"$files"
 	as_root install -D -m 0644 "$files" "$MANIFEST"
 	refresh_caches
-	BIN="$PREFIX/bin/leanterm"
+	BIN="$PREFIX/bin/pureterm"
 }
 
 refresh_caches() {
@@ -261,9 +261,9 @@ refresh_caches() {
 verify() {
 	if has ldd; then
 		missing=$(LC_ALL=C ldd "$BIN" 2>/dev/null | sed -n 's/^[[:space:]]*\([^ ]*\) => not found.*/\1/p')
-		[ -z "$missing" ] || die "LeanTerm is installed, but these libraries are missing: $(echo $missing)"
+		[ -z "$missing" ] || die "PureTerm is installed, but these libraries are missing: $(echo $missing)"
 	fi
-	"$BIN" --help >/dev/null 2>&1 || die "LeanTerm is installed, but $BIN does not start"
+	"$BIN" --help >/dev/null 2>&1 || die "PureTerm is installed, but $BIN does not start"
 }
 
 # ---- Uninstall ----------------------------------------------------------------------
@@ -271,30 +271,30 @@ verify() {
 uninstall() {
 	setup_sudo
 	removed=0
-	if has dpkg-query && dpkg-query -W -f='${Status}' leanterm 2>/dev/null | grep -q "install ok installed"; then
-		say "Removing the leanterm package"
-		as_root env DEBIAN_FRONTEND=noninteractive apt-get remove -y leanterm
+	if has dpkg-query && dpkg-query -W -f='${Status}' pureterm 2>/dev/null | grep -q "install ok installed"; then
+		say "Removing the pureterm package"
+		as_root env DEBIAN_FRONTEND=noninteractive apt-get remove -y pureterm
 		removed=1
 	fi
 	if [ -f "$MANIFEST" ]; then
-		say "Removing LeanTerm from $PREFIX"
+		say "Removing PureTerm from $PREFIX"
 		while IFS= read -r f; do
 			case "$f" in
 			"$PREFIX"/*) as_root rm -f "$f" ;;
 			esac
 		done <"$MANIFEST"
-		as_root rmdir "$PREFIX/share/leanterm" 2>/dev/null || true
+		as_root rmdir "$PREFIX/share/pureterm" 2>/dev/null || true
 		refresh_caches
 		removed=1
 	fi
-	[ "$removed" -eq 1 ] || die "LeanTerm is not installed (no package and no $MANIFEST)"
-	say "LeanTerm was removed. Your configuration in ~/.config/leanterm was kept."
+	[ "$removed" -eq 1 ] || die "PureTerm is not installed (no package and no $MANIFEST)"
+	say "PureTerm was removed. Your configuration in ~/.config/pureterm was kept."
 }
 
 # ---- Main ---------------------------------------------------------------------------
 
 main() {
-	VERSION="${LEANTERM_VERSION:-}"
+	VERSION="${PURETERM_VERSION:-}"
 	action=install
 	while [ $# -gt 0 ]; do
 		case "$1" in
@@ -326,14 +326,14 @@ main() {
 	has tar || die "tar is required"
 
 	[ -n "$VERSION" ] || VERSION=$(latest_version)
-	BASE_URL="${LEANTERM_BASE_URL:-https://github.com/$REPO/releases/download/v$VERSION}"
+	BASE_URL="${PURETERM_BASE_URL:-https://github.com/$REPO/releases/download/v$VERSION}"
 	TMP=$(mktemp -d)
 	trap cleanup EXIT
 	# dash keeps running after a trapped signal, so leave explicitly.
 	trap 'cleanup; exit 130' INT TERM
 
 	family=$(distro_family)
-	say "Installing LeanTerm $VERSION on $(distro_name)"
+	say "Installing PureTerm $VERSION on $(distro_name)"
 	if [ "$family" = deb ]; then
 		install_deb
 	else
@@ -341,7 +341,7 @@ main() {
 		install_tarball
 	fi
 	verify
-	say "LeanTerm $VERSION is installed. Start it from the application menu or with: leanterm"
+	say "PureTerm $VERSION is installed. Start it from the application menu or with: pureterm"
 }
 
 main "$@"

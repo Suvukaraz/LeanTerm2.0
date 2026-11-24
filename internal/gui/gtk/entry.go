@@ -1,7 +1,7 @@
 package gtk
 
 import (
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
 	"image"
 	"image/color"
 

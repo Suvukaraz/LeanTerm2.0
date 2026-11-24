@@ -1,11 +1,11 @@
-// Package winsys gives LeanTerm's and LeanEdit's windows their identity in
+// Package winsys gives PureTerm's and PureEdit's windows their identity in
 // the desktop: the application id (Wayland app_id, X11 WM_CLASS, Windows
 // AppUserModelID) that taskbars group windows by and that names the .desktop
 // file with the icon, the window icon, and the activation of a window on
 // behalf of a process the user just started.
 //
-// LeanEdit is an application of its own in the taskbar, also when its window
-// belongs to the LeanTerm process (opened from LeanTerm's file browser).
+// PureEdit is an application of its own in the taskbar, also when its window
+// belongs to the PureTerm process (opened from PureTerm's file browser).
 package winsys
 
 import (
@@ -19,11 +19,11 @@ import (
 	"gioui.org/app"
 )
 
-//go:embed icons/leanterm.png
-var leantermPNG []byte
+//go:embed icons/pureterm.png
+var puretermPNG []byte
 
-//go:embed icons/leanedit.png
-var leaneditPNG []byte
+//go:embed icons/pureedit.png
+var pureeditPNG []byte
 
 // App is the identity of one of the applications.
 type App struct {
@@ -34,7 +34,7 @@ type App struct {
 	// Name is the name shown to the user.
 	Name string
 	// Exe is the name of the application's executable on Windows
-	// (leanedit.exe runs LeanEdit; leanterm.exe -leanedit does as well).
+	// (pureedit.exe runs PureEdit; pureterm.exe -pureedit does as well).
 	Exe string
 	// IconResource is the icon's resource id in both Windows executables.
 	IconResource int
@@ -45,10 +45,10 @@ type App struct {
 }
 
 var (
-	// LeanTerm is the connection manager's identity.
-	LeanTerm = &App{ID: "org.leanterm.LeanTerm", Name: "LeanTerm", Exe: "leanterm.exe", IconResource: 1, png: leantermPNG}
-	// LeanEdit is the text editor's identity.
-	LeanEdit = &App{ID: "org.leanterm.LeanEdit", Name: "LeanEdit", Exe: "leanedit.exe", IconResource: 2, png: leaneditPNG}
+	// PureTerm is the connection manager's identity.
+	PureTerm = &App{ID: "org.pureterm.PureTerm", Name: "PureTerm", Exe: "pureterm.exe", IconResource: 1, png: puretermPNG}
+	// PureEdit is the text editor's identity.
+	PureEdit = &App{ID: "org.pureterm.PureEdit", Name: "PureEdit", Exe: "pureedit.exe", IconResource: 2, png: pureeditPNG}
 )
 
 // Icon is the application's icon (256x256).
@@ -109,8 +109,8 @@ func StartupToken() string {
 func AllowActivation() { allowActivation() }
 
 // View integrates a window when its native view exists (call it with every
-// app.ViewEvent): on Windows the taskbar identity and icon of a LeanEdit
-// window in a LeanTerm process. It returns at once; the work runs in the
+// app.ViewEvent): on Windows the taskbar identity and icon of a PureEdit
+// window in a PureTerm process. It returns at once; the work runs in the
 // background, as calls into the window's thread must not wait for it while
 // it waits for the event's handling.
 func View(a *App, e app.ViewEvent) { view(a, e) }

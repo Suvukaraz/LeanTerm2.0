@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/session"
 	"github.com/google/uuid"
 )
 

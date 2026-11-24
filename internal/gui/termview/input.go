@@ -16,7 +16,7 @@ import (
 	"gioui.org/io/transfer"
 	"gioui.org/layout"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 const allMods = key.ModCtrl | key.ModShift | key.ModAlt | key.ModSuper | key.ModCommand

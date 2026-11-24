@@ -19,7 +19,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/events"
 )
 
 // knownHostsMu serialises all reads/writes of known_hosts within this process.

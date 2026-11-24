@@ -16,8 +16,8 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
 )
 
 // Sizes of the web dialogs' pixel fonts (the GUI font is 13.33px).

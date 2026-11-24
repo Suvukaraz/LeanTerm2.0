@@ -8,8 +8,8 @@ import (
 	"gioui.org/font"
 	"gioui.org/unit"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // The terminal look ([terminal.look], per connection overridable), as

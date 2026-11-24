@@ -22,8 +22,8 @@ import (
 	"gioui.org/unit"
 	"golang.org/x/image/math/fixed"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // DefaultFontPt is the terminal font size in points without a setting.

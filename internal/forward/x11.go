@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
 	"golang.org/x/crypto/ssh"
 )
 

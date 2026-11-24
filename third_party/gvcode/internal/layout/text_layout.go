@@ -40,10 +40,10 @@ type TextLayout struct {
 	tabWidth     int
 	wrapLine     bool
 	// WrapIndent aligns wrapped continuation lines to the indentation of
-	// their paragraph (LeanTerm); wrapIndent is the value of the cache.
+	// their paragraph (PureTerm); wrapIndent is the value of the cache.
 	WrapIndent bool
 	wrapIndent bool
-	// LeanTerm: code folding. hidden are the folded paragraphs (inclusive
+	// PureTerm: code folding. hidden are the folded paragraphs (inclusive
 	// ranges of paragraph indices, sorted); hiddenChanged forces the line
 	// positions to be recomputed.
 	hidden        [][2]int
@@ -122,7 +122,7 @@ func (tl *TextLayout) readParagraph() ([]byte, error) {
 // SetHidden sets the folded paragraphs: inclusive ranges of paragraph
 // (logical line) indices, sorted and not overlapping. Hidden paragraphs keep
 // their text and caret positions but take no space and are not painted
-// (LeanTerm: code folding). It reports whether they changed.
+// (PureTerm: code folding). It reports whether they changed.
 func (tl *TextLayout) SetHidden(spans [][2]int) bool {
 	if slices.Equal(tl.hidden, spans) {
 		return false
@@ -165,7 +165,7 @@ func (tl *TextLayout) Layout(shaper *text.Shaper, params *text.Parameters, tabWi
 		tl.fakeLayout()
 	} else {
 		tl.spaceGlyph, _ = tl.shapeRune(shaper, tl.params, '\u0020')
-		// LeanTerm: changed folds keep the shaped paragraphs but recompute
+		// PureTerm: changed folds keep the shaped paragraphs but recompute
 		// every line's position.
 		cleanPrefix := cacheValid && !tl.hiddenChanged
 		tl.hiddenChanged = false
@@ -339,7 +339,7 @@ func (tl *TextLayout) calculateYOffsets(startLine int) {
 	}
 
 	lineHeight := tl.calcLineHeight(&tl.params)
-	// LeanTerm: a hidden (folded) line takes no space: it gets the baseline
+	// PureTerm: a hidden (folded) line takes no space: it gets the baseline
 	// of the visible line above it.
 	prevY := 0
 	if startLine > 0 {
@@ -369,7 +369,7 @@ func (tl *TextLayout) calculateXOffsets(startLine int) {
 		alignOff := tl.params.Alignment.Align(tl.params.Locale.Direction, line.Width, tl.params.MaxWidth)
 		tl.Lines[i].recompute(alignOff+line.Indent, runeOff)
 		if line.Indent > 0 {
-			tl.Lines[i].XOff = alignOff + line.Indent // LeanTerm: wrap indentation
+			tl.Lines[i].XOff = alignOff + line.Indent // PureTerm: wrap indentation
 		}
 		runeOff += line.Runes
 	}
@@ -659,7 +659,7 @@ func (tl *TextLayout) Locate(viewport image.Rectangle, startRune, endRune int, r
 			break
 		}
 		if tl.Lines[lineIdx].Hidden {
-			continue // LeanTerm: folded lines have no regions
+			continue // PureTerm: folded lines have no regions
 		}
 		pos := tl.ClosestToLineCol(ScreenPos{Line: lineIdx})
 		if int(pos.Y)+pos.Descent.Ceil() < viewport.Min.Y {

@@ -3,9 +3,9 @@ package termview
 import (
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/session"
 )
 
 // Session connects a terminal engine to a session of the session manager:

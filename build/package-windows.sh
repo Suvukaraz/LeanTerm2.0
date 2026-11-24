@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 # Builds the Windows installer (NSIS, amd64) by cross-compiling from Linux:
-# leanterm.exe and leanedit.exe, the same program with their own icon and
-# version information (LeanEdit is an application of its own in Explorer,
-# "Open with" and the taskbar; leanedit.exe runs the editor).
+# pureterm.exe and pureedit.exe, the same program with their own icon and
+# version information (PureEdit is an application of its own in Explorer,
+# "Open with" and the taskbar; pureedit.exe runs the editor).
 #
 # Needs Go, go-winres (GO_WINRES, default: $(go env GOPATH)/bin/go-winres)
 # and makensis (Debian/Ubuntu: apt install nsis). With the libghostty engine
-# (the default, LEANTERM_TAGS=ghostty) also Zig (ZIG, default: zig; the CI
+# (the default, PURETERM_TAGS=ghostty) also Zig (ZIG, default: zig; the CI
 # installs it with pip) and PKG_CONFIG_PATH pointing to the Windows
 # libghostty-vt, built with
 #   build/gio/build-libghostty.sh x86_64-windows-gnu <prefix>
-# LEANTERM_TAGS= builds with the pure Go engine only, without cgo.
+# PURETERM_TAGS= builds with the pure Go engine only, without cgo.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 VERSION="${1:-$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")}"
-SETUP_NAME="leanterm_${VERSION}_windows_amd64_setup.exe"
+SETUP_NAME="pureterm_${VERSION}_windows_amd64_setup.exe"
 ZIG="${ZIG:-zig}"
 GO_WINRES="${GO_WINRES:-$(go env GOPATH)/bin/go-winres}"
 NSIS_DIR="$ROOT_DIR/build/windows/nsis"
-TAGS="${LEANTERM_TAGS-ghostty}"
+TAGS="${PURETERM_TAGS-ghostty}"
 
 if ! command -v makensis >/dev/null 2>&1; then
     echo "makensis not found. Install NSIS first, e.g.: sudo apt install nsis" >&2
@@ -43,22 +43,22 @@ esac
 cd "$ROOT_DIR"
 WORK_DIR="$(mktemp -d)"
 # The resource object must sit in the package folder while Go links it.
-SYSO="$ROOT_DIR/cmd/leanterm/rsrc_windows_amd64.syso"
+SYSO="$ROOT_DIR/cmd/pureterm/rsrc_windows_amd64.syso"
 trap 'rm -rf "$WORK_DIR" "$SYSO"' EXIT
 
 # winres writes the resources of one executable: icon 1 is its own (the
-# window class and Explorer take it), icon 2 is LeanEdit's (LeanEdit's
-# windows inside LeanTerm and pinned LeanEdit windows use it), the manifest
+# window class and Explorer take it), icon 2 is PureEdit's (PureEdit's
+# windows inside PureTerm and pinned PureEdit windows use it), the manifest
 # and the version information.
 winres() { # name description own-icon
     # go-winres takes file names relative to the JSON file.
     cp "$3" "$WORK_DIR/own.ico"
-    cp "$ROOT_DIR/build/windows/leanedit.ico" "$WORK_DIR/leanedit.ico"
+    cp "$ROOT_DIR/build/windows/pureedit.ico" "$WORK_DIR/pureedit.ico"
     cat > "$WORK_DIR/winres.json" <<EOF
 {
   "RT_GROUP_ICON": {
     "#1": {"0000": "own.ico"},
-    "#2": {"0000": "leanedit.ico"}
+    "#2": {"0000": "pureedit.ico"}
   },
   "RT_MANIFEST": {
     "#1": {"0409": {
@@ -74,11 +74,11 @@ winres() { # name description own-icon
     "#1": {"0000": {
       "fixed": {"file_version": "$VERSION.0", "product_version": "$VERSION.0"},
       "info": {"0409": {
-        "CompanyName": "LeanTerm Project",
+        "CompanyName": "PureTerm Project",
         "FileDescription": "$2",
         "FileVersion": "$VERSION",
         "InternalName": "$1",
-        "LegalCopyright": "© 2026 LeanTerm Project, GPL-3.0",
+        "LegalCopyright": "© 2026 PureTerm Project, GPL-3.0",
         "OriginalFilename": "$1.exe",
         "ProductName": "$2",
         "ProductVersion": "$VERSION"
@@ -87,37 +87,48 @@ winres() { # name description own-icon
   }
 }
 EOF
-    "$GO_WINRES" make --in "$WORK_DIR/winres.json" --arch amd64 --out "$ROOT_DIR/cmd/leanterm/rsrc"
+    "$GO_WINRES" make --in "$WORK_DIR/winres.json" --arch amd64 --out "$ROOT_DIR/cmd/pureterm/rsrc"
 }
 
 build() { # name
     if [ -n "$TAGS" ]; then
+        # zig cc ignores -mwindows passed by Go for -H windowsgui, so pass
+        # --subsystem,windows explicitly to lld to prevent a console window.
         GOOS=windows GOARCH=amd64 CGO_ENABLED=1 \
             CC="$ZIG cc -target x86_64-windows-gnu" CXX="$ZIG c++ -target x86_64-windows-gnu" \
             CGO_LDFLAGS_ALLOW='.*[.]lib$' \
             go build -tags "$TAGS" -trimpath -buildvcs=false \
-            -ldflags="-w -s -H windowsgui" -o "$WORK_DIR/$1.exe" ./cmd/leanterm
+            -ldflags="-w -s -H windowsgui -extldflags=-Wl,--subsystem,windows" -o "$WORK_DIR/$1.exe" ./cmd/pureterm
     else
         GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
             go build -trimpath -buildvcs=false \
-            -ldflags="-w -s -H windowsgui" -o "$WORK_DIR/$1.exe" ./cmd/leanterm
+            -ldflags="-w -s -H windowsgui" -o "$WORK_DIR/$1.exe" ./cmd/pureterm
     fi
+    # Verify PE OptionalHeader.Subsystem == 2 (IMAGE_SUBSYSTEM_WINDOWS_GUI).
+    python3 -c '
+import struct, sys
+data = open(sys.argv[1], "rb").read(4096)
+pe_off = struct.unpack_from("<I", data, 0x3c)[0]
+assert data[pe_off:pe_off+4] == b"PE\x00\x00", "invalid PE header"
+subsys = struct.unpack_from("<H", data, pe_off + 24 + 68)[0]
+assert subsys == 2, f"expected Windows GUI subsystem (2), got {subsys}"
+' "$WORK_DIR/$1.exe"
     rm -f "$SYSO"
 }
 
-echo "Building leanterm.exe (${TAGS:-vt only})..."
-winres leanterm "LeanTerm" "$ROOT_DIR/build/windows/icon.ico"
-build leanterm
-echo "Building leanedit.exe..."
-winres leanedit "LeanEdit" "$ROOT_DIR/build/windows/leanedit.ico"
-build leanedit
+echo "Building pureterm.exe (${TAGS:-vt only})..."
+winres pureterm "PureTerm" "$ROOT_DIR/build/windows/icon.ico"
+build pureterm
+echo "Building pureedit.exe..."
+winres pureedit "PureEdit" "$ROOT_DIR/build/windows/pureedit.ico"
+build pureedit
 
 echo "Creating installer..."
 mkdir -p "$ROOT_DIR/bin"
 (cd "$NSIS_DIR" && makensis -V2 \
     -DINFO_PRODUCTVERSION="$VERSION" \
-    -DARG_BINARY="$WORK_DIR/leanterm.exe" \
-    -DARG_LEANEDIT="$WORK_DIR/leanedit.exe" \
+    -DARG_BINARY="$WORK_DIR/pureterm.exe" \
+    -DARG_PUREEDIT="$WORK_DIR/pureedit.exe" \
     -DOUTFILE="$ROOT_DIR/bin/$SETUP_NAME" \
     gio.nsi)
 

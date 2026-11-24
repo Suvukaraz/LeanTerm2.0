@@ -44,10 +44,10 @@ func defaultShell() string {
 
 // psCwdPrompt wraps the existing PowerShell prompt (profile, oh-my-posh, ...) so
 // every prompt reports the current folder as OSC 9;9, like for Windows Terminal.
-const psCwdPrompt = `$global:__LeanTermPrompt = $function:prompt
+const psCwdPrompt = `$global:__PureTermPrompt = $function:prompt
 function global:prompt {
   $loc = $executionContext.SessionState.Path.CurrentLocation
-  $out = & $global:__LeanTermPrompt
+  $out = & $global:__PureTermPrompt
   if ($loc.Provider.Name -eq 'FileSystem') { "$([char]27)]9;9;$($loc.ProviderPath)$([char]27)\" + $out } else { $out }
 }`
 

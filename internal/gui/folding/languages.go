@@ -1,6 +1,6 @@
 package folding
 
-// The grammars of the languages LeanEdit highlights (leanedit/languages.go)
+// The grammars of the languages PureEdit highlights (pureedit/languages.go)
 // that gotreesitter has. Each grammar package embeds its own blob and loads it
 // on the first Language call (and caches it), so only the languages that are
 // opened cost memory. Languages without a grammar (batch, sass, systemd,
@@ -100,7 +100,7 @@ var grammars = map[string]func() *gotreesitter.Language{
 	"diff":       ts_diff.Language,
 }
 
-// Grammar is the grammar name gotreesitter uses for a LeanEdit language id
+// Grammar is the grammar name gotreesitter uses for a PureEdit language id
 // ("" when the language has no grammar).
 func Grammar(langID string) string {
 	if _, ok := grammars[langID]; !ok {
@@ -159,7 +159,7 @@ var grammarNames = map[string]string{
 // Supported reports whether the language can be folded.
 func Supported(langID string) bool { return grammars[langID] != nil }
 
-// Languages are the LeanEdit language ids that can be folded.
+// Languages are the PureEdit language ids that can be folded.
 func Languages() []string {
 	out := make([]string, 0, len(grammars))
 	for id := range grammars {

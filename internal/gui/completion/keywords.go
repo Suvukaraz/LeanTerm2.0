@@ -2,8 +2,8 @@ package completion
 
 import "strings"
 
-// The keywords of the common languages, by LeanEdit language id (the ids
-// that its language detection gives; see leanedit/languages.go). Languages
+// The keywords of the common languages, by PureEdit language id (the ids
+// that its language detection gives; see pureedit/languages.go). Languages
 // without a list complete document words only.
 var keywords = map[string]string{
 	"go": `break case chan const continue default defer else fallthrough for func go goto if import

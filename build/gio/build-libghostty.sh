@@ -4,11 +4,11 @@
 #
 #   build/gio/build-libghostty.sh <zig-target> <prefix>
 #
-# e.g. x86_64-linux-gnu.2.34 (glibc 2.34, LeanTerm's minimum) or
+# e.g. x86_64-linux-gnu.2.34 (glibc 2.34, PureTerm's minimum) or
 # x86_64-windows-gnu. Needs Zig 0.17 (pip install ziglang==0.17.1 provides it
-# as `python -m ziglang`; set ZIG to override). Afterwards build LeanTerm with
+# as `python -m ziglang`; set ZIG to override). Afterwards build PureTerm with
 #
-#   PKG_CONFIG_PATH=<prefix>/lib/pkgconfig go build -tags ghostty ./cmd/leanterm
+#   PKG_CONFIG_PATH=<prefix>/lib/pkgconfig go build -tags ghostty ./cmd/pureterm
 set -euo pipefail
 
 TARGET=${1:?zig target}

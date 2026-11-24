@@ -11,10 +11,10 @@ import (
 	"github.com/charmbracelet/x/xpty"
 )
 
-// Signals that were ignored when LeanTerm started (e.g. SIGINT for a program
+// Signals that were ignored when PureTerm started (e.g. SIGINT for a program
 // started with & or nohup) stay ignored across exec, so Ctrl+C would not work
 // in local shells. Catching them makes exec reset them to the default for
-// the shells; LeanTerm itself keeps ignoring them.
+// the shells; PureTerm itself keeps ignoring them.
 func init() {
 	for _, sig := range []os.Signal{syscall.SIGINT, syscall.SIGQUIT} {
 		if signal.Ignored(sig) {

@@ -67,11 +67,11 @@ func TestShellGetsInterruptFromPTY(t *testing.T) {
 	}
 }
 
-// A LeanTerm started with SIGINT ignored (with & from a script, nohup) must
+// A PureTerm started with SIGINT ignored (with & from a script, nohup) must
 // still give its shells a working Ctrl+C. The test runs itself again with
 // SIGINT ignored, as such a start would.
 func TestInterruptWorksWhenStartedWithSIGINTIgnored(t *testing.T) {
-	if os.Getenv("LEANTERM_SIGINT_HELPER") == "1" {
+	if os.Getenv("PURETERM_SIGINT_HELPER") == "1" {
 		TestShellGetsInterruptFromPTY(t)
 		return
 	}
@@ -80,7 +80,7 @@ func TestInterruptWorksWhenStartedWithSIGINTIgnored(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("/bin/sh", "-c", `trap '' INT; exec "$0" -test.run '^TestInterruptWorksWhenStartedWithSIGINTIgnored$' -test.v`, exe)
-	cmd.Env = append(os.Environ(), "LEANTERM_SIGINT_HELPER=1")
+	cmd.Env = append(os.Environ(), "PURETERM_SIGINT_HELPER=1")
 	out, err := cmd.CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "--- PASS") {
 		t.Fatalf("helper failed: %v\n%s", err, out)

@@ -1,0 +1,9 @@
+#!/bin/sh
+# PureEdit on its own, the text editor of PureTerm: pureedit [options] [--] [files...]
+# runs pureterm -pureedit from the same folder (following a symbolic link to
+# this script).
+self=$0
+if [ -L "$self" ] && command -v readlink >/dev/null 2>&1; then
+	self=$(readlink -f "$self")
+fi
+exec "$(dirname "$self")/pureterm" -pureedit "$@"

@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExportAndImportWithArmoredSecrets(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-exchange-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-exchange-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -54,7 +54,7 @@ func TestExportAndImportWithArmoredSecrets(t *testing.T) {
 }
 
 func TestImportIDCollisionRemapping(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-collision-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-collision-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -88,7 +88,7 @@ func TestImportIDCollisionRemapping(t *testing.T) {
 }
 
 func TestImportR14DangerousCommandWarning(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-r14-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-r14-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
@@ -113,7 +113,7 @@ func TestImportR14DangerousCommandWarning(t *testing.T) {
 }
 
 func TestExportBulkEditRegexSafe(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-bulk-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-bulk-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 

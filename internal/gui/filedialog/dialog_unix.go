@@ -91,7 +91,7 @@ func portal(o Options) (string, error) {
 		return "", errNoPortal
 	}
 	defer conn.Close()
-	token := fmt.Sprintf("leanterm%d", time.Now().UnixNano())
+	token := fmt.Sprintf("pureterm%d", time.Now().UnixNano())
 	sender := strings.ReplaceAll(strings.TrimPrefix(conn.Names()[0], ":"), ".", "_")
 	reqPath := dbus.ObjectPath("/org/freedesktop/portal/desktop/request/" + sender + "/" + token)
 	if err := conn.AddMatchSignal(dbus.WithMatchObjectPath(reqPath), dbus.WithMatchInterface("org.freedesktop.portal.Request"), dbus.WithMatchMember("Response")); err != nil {

@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/stats"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/stats"
 )
 
 type SessionKind string

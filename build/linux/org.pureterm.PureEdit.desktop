@@ -1,0 +1,19 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=PureEdit
+GenericName=Text Editor
+Comment=Text editor of PureTerm, usable on its own
+Exec=pureedit -- %F
+Icon=pureedit
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/markdown;text/x-log;text/csv;text/x-csrc;text/x-chdr;text/x-c++src;text/x-c++hdr;text/x-go;text/x-python;text/x-java;text/x-script.python;text/x-sql;text/x-makefile;text/x-cmake;text/css;text/html;text/xml;text/x-yaml;text/x-toml;text/x-ini;application/json;application/xml;application/x-yaml;application/toml;application/x-shellscript;application/x-desktop;application/javascript;application/x-php;application/x-perl;application/x-ruby;
+StartupWMClass=org.pureterm.PureEdit
+StartupNotify=true
+Keywords=editor;text;notepad;code;
+Actions=new-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=pureedit --new-window

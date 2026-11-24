@@ -4,7 +4,7 @@ package gtk
 
 import "image/color"
 
-// Palette holds the color tokens of LeanTerm's GTK theme (--gtk-* in gtk.css).
+// Palette holds the color tokens of PureTerm's GTK theme (--gtk-* in gtk.css).
 type Palette struct {
 	Name                string
 	BgColor             color.NRGBA // --gtk-bg-color

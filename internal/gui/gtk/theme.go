@@ -1,4 +1,4 @@
-// Package gtk draws LeanTerm's GTK/Adwaita-style widgets with Gio. Sizes and
+// Package gtk draws PureTerm's GTK/Adwaita-style widgets with Gio. Sizes and
 // colors follow the GTK components.
 package gtk
 
@@ -18,7 +18,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
 )
 
 // FontSize is the GUI font size (10pt, --gtk-font-size).

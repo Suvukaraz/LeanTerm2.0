@@ -8,13 +8,15 @@ import (
 )
 
 const (
-	KeyringService = "org.leanterm.app"
+	KeyringService = "org.pureterm.app"
 	KeyringUser    = "vault-identity"
 
-	// legacyKeyringService is the service name used under the former program
-	// name (LinXTerm); entries found there are moved to KeyringService.
+	// legacyKeyringServices are the service names used under former program
+	// names (LeanTerm, LinXTerm); entries found there are moved to KeyringService.
 	legacyKeyringService = "org.linxterm.app"
 )
+
+var legacyKeyringServices = []string{"org.leanterm.app", legacyKeyringService}
 
 var (
 	ErrKeyringUnavailable = errors.New("system keyring is unavailable or locked")
@@ -31,9 +33,13 @@ func NewKeyringManager() *KeyringManager {
 func (km *KeyringManager) GetIdentity() (*age.X25519Identity, error) {
 	val, err := keyring.Get(KeyringService, KeyringUser)
 	if errors.Is(err, keyring.ErrNotFound) {
-		if val, err = keyring.Get(legacyKeyringService, KeyringUser); err == nil {
-			if keyring.Set(KeyringService, KeyringUser, val) == nil {
-				_ = keyring.Delete(legacyKeyringService, KeyringUser)
+		for _, legacy := range legacyKeyringServices {
+			if legacyVal, legacyErr := keyring.Get(legacy, KeyringUser); legacyErr == nil {
+				val, err = legacyVal, nil
+				if keyring.Set(KeyringService, KeyringUser, val) == nil {
+					_ = keyring.Delete(legacy, KeyringUser)
+				}
+				break
 			}
 		}
 	}

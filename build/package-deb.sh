@@ -6,16 +6,16 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 VERSION="${1:-$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")}"
 ARCH="amd64"
-PKG_NAME="leanterm"
+PKG_NAME="pureterm"
 DEB_NAME="${PKG_NAME}_${VERSION}_${ARCH}.deb"
 
 cd "$ROOT_DIR"
 # The Gio GUI with the libghostty engine: build libghostty first
 # (build/gio/build-libghostty.sh) and set PKG_CONFIG_PATH to its prefix.
-# LEANTERM_TAGS= builds without libghostty (the vt engine only).
-TAGS="${LEANTERM_TAGS-ghostty}"
-echo "Building LeanTerm binary..."
-go build ${TAGS:+-tags "$TAGS"} -trimpath -ldflags="-s -w" -o "$ROOT_DIR/bin/leanterm" ./cmd/leanterm
+# PURETERM_TAGS= builds without libghostty (the vt engine only).
+TAGS="${PURETERM_TAGS-ghostty}"
+echo "Building PureTerm binary..."
+go build ${TAGS:+-tags "$TAGS"} -trimpath -ldflags="-s -w" -o "$ROOT_DIR/bin/pureterm" ./cmd/pureterm
 
 DEB_ROOT="$ROOT_DIR/build/deb-root"
 rm -rf "$DEB_ROOT"
@@ -31,28 +31,28 @@ chmod 0755 "$DEB_ROOT"
 chmod 0755 "$DEB_ROOT/DEBIAN"
 
 # 1. Binary
-install -m 0755 "$ROOT_DIR/bin/leanterm" "$DEB_ROOT/usr/bin/leanterm"
+install -m 0755 "$ROOT_DIR/bin/pureterm" "$DEB_ROOT/usr/bin/pureterm"
 
 # 2. Desktop entries. Their names are the application ids of the windows
 # (Wayland app_id, X11 WM_CLASS = StartupWMClass): the desktop finds the icon
-# and keeps LeanTerm and LeanEdit apart in the taskbar.
-sed "s|^Exec=leanterm|Exec=/usr/bin/leanterm|" "$ROOT_DIR/build/linux/org.leanterm.LeanTerm.desktop" \
-    > "$DEB_ROOT/usr/share/applications/org.leanterm.LeanTerm.desktop"
-chmod 0644 "$DEB_ROOT/usr/share/applications/org.leanterm.LeanTerm.desktop"
+# and keeps PureTerm and PureEdit apart in the taskbar.
+sed "s|^Exec=pureterm|Exec=/usr/bin/pureterm|" "$ROOT_DIR/build/linux/org.pureterm.PureTerm.desktop" \
+    > "$DEB_ROOT/usr/share/applications/org.pureterm.PureTerm.desktop"
+chmod 0644 "$DEB_ROOT/usr/share/applications/org.pureterm.PureTerm.desktop"
 
-# LeanEdit: the text editor on its own (own menu entry, "Open with" for text files)
-install -m 0755 "$ROOT_DIR/build/linux/leanedit" "$DEB_ROOT/usr/bin/leanedit"
-sed "s|^Exec=leanedit|Exec=/usr/bin/leanedit|" "$ROOT_DIR/build/linux/org.leanterm.LeanEdit.desktop" \
-    > "$DEB_ROOT/usr/share/applications/org.leanterm.LeanEdit.desktop"
-chmod 0644 "$DEB_ROOT/usr/share/applications/org.leanterm.LeanEdit.desktop"
+# PureEdit: the text editor on its own (own menu entry, "Open with" for text files)
+install -m 0755 "$ROOT_DIR/build/linux/pureedit" "$DEB_ROOT/usr/bin/pureedit"
+sed "s|^Exec=pureedit|Exec=/usr/bin/pureedit|" "$ROOT_DIR/build/linux/org.pureterm.PureEdit.desktop" \
+    > "$DEB_ROOT/usr/share/applications/org.pureterm.PureEdit.desktop"
+chmod 0644 "$DEB_ROOT/usr/share/applications/org.pureterm.PureEdit.desktop"
 
 # 3. Icons
 for size in 16 24 32 48 64 128 256 512; do
-    install -m 0644 "$ROOT_DIR/build/linux/icons/leanterm-${size}.png" "$DEB_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/leanterm.png"
-    install -m 0644 "$ROOT_DIR/build/linux/icons/leanedit-${size}.png" "$DEB_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/leanedit.png"
+    install -m 0644 "$ROOT_DIR/build/linux/icons/pureterm-${size}.png" "$DEB_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/pureterm.png"
+    install -m 0644 "$ROOT_DIR/build/linux/icons/pureedit-${size}.png" "$DEB_ROOT/usr/share/icons/hicolor/${size}x${size}/apps/pureedit.png"
 done
-install -m 0644 "$ROOT_DIR/LeanTerm_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/leanterm.svg"
-install -m 0644 "$ROOT_DIR/LeanEdit_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/leanedit.svg"
+install -m 0644 "$ROOT_DIR/PureTerm_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/pureterm.svg"
+install -m 0644 "$ROOT_DIR/PureEdit_Icon.svg" "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/pureedit.svg"
 
 # 4. Control file
 INSTALLED_SIZE=$(du -sk --exclude=DEBIAN "$DEB_ROOT" | cut -f1)
@@ -62,14 +62,14 @@ Version: ${VERSION}
 Section: net
 Priority: optional
 Architecture: ${ARCH}
-Maintainer: LeanTerm Project <info@leanterm.org>
+Maintainer: PureTerm Project <info@pureterm.org>
 Depends: libc6 (>= 2.34), libegl1, libgles2, libwayland-client0, libwayland-cursor0, libwayland-egl1, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcursor1, libxfixes3, libxrender1, libffi8
-Conflicts: linxterm
-Replaces: linxterm
+Conflicts: linxterm, leanterm
+Replaces: linxterm, leanterm
 Recommends: xdg-utils, openssh-client, keepassxc
-Homepage: https://github.com/Suvukaraz/LeanTerm2.0
+Homepage: https://github.com/Suvukaraz/PureTerm
 Installed-Size: ${INSTALLED_SIZE}
-Description: LeanTerm Connection Manager
+Description: PureTerm Connection Manager
  SSH, Telnet and SFTP connection manager for Linux and Windows. Native SSH
  (jump hosts, port forwarding, agent, X11) and Telnet, tabbed terminals, an
  SFTP and local file browser, a built-in text editor that edits remote files

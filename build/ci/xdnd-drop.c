@@ -1,6 +1,6 @@
 // xdnd-drop drags a file list onto an X11 window with the XDND protocol, as a
-// file manager does, for the CI's test of dropping files on LeanEdit and
-// LeanTerm:
+// file manager does, for the CI's test of dropping files on PureEdit and
+// PureTerm:
 //
 //   cc -o xdnd-drop build/ci/xdnd-drop.c -lX11
 //   xdnd-drop <window id> <x> <y> 'file:///path/a.txt'

@@ -8,8 +8,8 @@ import (
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // Screenshot draws what the terminal shows into an image, in software (Gio

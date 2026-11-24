@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/editor"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/editor"
+	"github.com/Suvukaraz/PureTerm/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 type SFTPService struct {

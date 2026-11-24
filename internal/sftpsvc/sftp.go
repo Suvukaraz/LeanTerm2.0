@@ -16,8 +16,8 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
 )
 
 // EventEmitter defines the interface for event delivery to the GUI.
@@ -434,7 +434,7 @@ func (m *SFTPManager) OpenWithDefaultApp(sftpID string, remotePath string, emitt
 	}
 
 	baseName := filepath.Base(remotePath)
-	tempDir, err := os.MkdirTemp("", "leanterm-open-*")
+	tempDir, err := os.MkdirTemp("", "pureterm-open-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}

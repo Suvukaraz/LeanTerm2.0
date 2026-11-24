@@ -12,10 +12,10 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/services"
 )
 
 // Service is what the window needs of services.ConfigService.
@@ -173,7 +173,7 @@ func (d *Dialog) save() {
 		d.Saved(before, d.s)
 	}
 	if restartRelevantChanged(before, d.s) {
-		d.message("Settings saved. Options marked with (*) take effect after restarting LeanTerm.")
+		d.message("Settings saved. Options marked with (*) take effect after restarting PureTerm.")
 	}
 }
 
@@ -193,7 +193,7 @@ func (d *Dialog) export() {
 	}
 	ch, inv, choose, cfg := d.pending, d.Invalidate, d.ChooseSaveFile, d.Config
 	go func() {
-		path, err := choose("Export LeanTerm configuration", "leanterm-export.toml")
+		path, err := choose("Export PureTerm configuration", "pureterm-export.toml")
 		switch {
 		case err != nil:
 			post(ch, inv, "Export failed: "+err.Error())

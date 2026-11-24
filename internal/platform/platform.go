@@ -31,7 +31,7 @@ func OpenURL(url string) error {
 	return openURL(url)
 }
 
-// ConfigBaseDir is the folder that holds the configuration folder of LeanTerm:
+// ConfigBaseDir is the folder that holds the configuration folder of PureTerm:
 // ~/.config on Unix, %APPDATA% on Windows.
 func ConfigBaseDir() (string, error) {
 	return configBaseDir()

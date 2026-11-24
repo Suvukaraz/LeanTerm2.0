@@ -11,11 +11,11 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/services"
 )
 
 // ---- Wake On LAN ---------------------------------------------------------------

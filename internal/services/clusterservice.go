@@ -3,10 +3,10 @@ package services
 import (
 	"fmt"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/cluster"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/vars"
+	"github.com/Suvukaraz/PureTerm/internal/cluster"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/vars"
 )
 
 // PCCOptions specifies execution options for Power Cluster Controller sends.

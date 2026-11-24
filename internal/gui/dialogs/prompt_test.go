@@ -12,8 +12,8 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/session"
 )
 
 type harness struct {

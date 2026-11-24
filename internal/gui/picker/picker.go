@@ -18,7 +18,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
 )
 
 // Item is one row: a badge, the label with its matched characters, a

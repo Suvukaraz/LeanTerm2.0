@@ -10,7 +10,7 @@ import (
 	"gioui.org/op/paint"
 )
 
-// logo colors of LeanTerm_Icon.svg.
+// logo colors of PureTerm_Icon.svg.
 var (
 	logoBgStart   = color.NRGBA{R: 0x22, G: 0x11, B: 0x0c, A: 0xff}
 	logoBgEnd     = color.NRGBA{R: 0x14, G: 0x0a, B: 0x07, A: 0xff}
@@ -23,7 +23,7 @@ var (
 	logoPrompt    = color.NRGBA{R: 0xe7, G: 0x6f, B: 0x51, A: 0xff}
 )
 
-// Logo draws LeanTerm's icon (LeanTerm_Icon.svg) with Gio paths: the espresso
+// Logo draws PureTerm's icon (PureTerm_Icon.svg) with Gio paths: the espresso
 // rounded square with the SFTP sidebar on the left and the SSH prompt ">_" on
 // the right. The size is the smaller of the constraints; the logo is centered.
 type Logo struct{}

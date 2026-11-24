@@ -28,7 +28,7 @@ type Host interface {
 	Quit()
 }
 
-// EditorWindows shows LeanEdit's windows; the GUI implements it. When the
+// EditorWindows shows PureEdit's windows; the GUI implements it. When the
 // editor window has closed, the GUI calls EditorService.WindowClosed.
 type EditorWindows interface {
 	// ShowEditor creates the editor window or raises it.
@@ -37,7 +37,7 @@ type EditorWindows interface {
 	CloseEditor()
 	// EditorShown reports whether the editor window is open.
 	EditorShown() bool
-	// ShowEditorPrefs opens LeanEdit's settings window or raises it.
+	// ShowEditorPrefs opens PureEdit's settings window or raises it.
 	ShowEditorPrefs() error
 	// CloseEditorPrefs closes the settings window.
 	CloseEditorPrefs()

@@ -8,7 +8,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
 )
 
 func TestPasswordEntryIsMasked(t *testing.T) {

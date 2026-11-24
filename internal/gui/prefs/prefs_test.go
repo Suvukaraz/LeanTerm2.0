@@ -13,9 +13,9 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/services"
 )
 
 type fakeService struct {
@@ -89,7 +89,7 @@ func TestEditsACopyAndSaves(t *testing.T) {
 	d.Open("")
 	d.s.General.Layout = "compact"
 	d.save()
-	if !d.msgOpen || d.msg.Secondary != "Settings saved. Options marked with (*) take effect after restarting LeanTerm." {
+	if !d.msgOpen || d.msg.Secondary != "Settings saved. Options marked with (*) take effect after restarting PureTerm." {
 		t.Errorf("no restart hint: %v %q", d.msgOpen, d.msg.Secondary)
 	}
 }

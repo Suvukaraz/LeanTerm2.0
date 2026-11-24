@@ -1,4 +1,4 @@
-// Package appcore builds LeanTerm's backend for a GUI: configuration,
+// Package appcore builds PureTerm's backend for a GUI: configuration,
 // secrets, the event bus, sessions, clusters and KeePass, wired as the
 // application needs them. It has no GUI of its own; the GUI subscribes to
 // Bus and answers prompts through session.Prompter.
@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/cluster"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/keepass"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/session"
+	"github.com/Suvukaraz/PureTerm/internal/cluster"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/keepass"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/session"
 )
 
-// Options select the configuration (the command line flags of LeanTerm).
+// Options select the configuration (the command line flags of PureTerm).
 type Options struct {
 	// ConfigDir is the configuration folder ("" = the default).
 	ConfigDir string

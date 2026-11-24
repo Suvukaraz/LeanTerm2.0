@@ -205,7 +205,7 @@ type lineWrapper struct {
 	glyphBuf        glyphReader
 	glyphs          []text.Glyph
 	// indentWrapped: continuation lines start at the paragraph's
-	// indentation (LeanTerm, as KWrite), unless it is more than
+	// indentation (PureTerm, as KWrite), unless it is more than
 	// maxIndentRatio of the width.
 	indentWrapped bool
 }

@@ -41,8 +41,8 @@ func openURL(url string) error {
 	return exec.Command(opener(), url).Start()
 }
 
-// AppDirName is the name of LeanTerm's folder inside ConfigBaseDir.
-const AppDirName = "leanterm"
+// AppDirName is the name of PureTerm's folder inside ConfigBaseDir.
+const AppDirName = "pureterm"
 
 func configBaseDir() (string, error) {
 	home, err := os.UserHomeDir()

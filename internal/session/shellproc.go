@@ -50,7 +50,7 @@ func StartShell(ctx context.Context, spec ShellSpec) (ShellProcess, error) {
 func DefaultShell() string { return defaultShell() }
 
 // WithCwdReporting adds the options that make a shell report its working
-// directory, where LeanTerm knows how (PowerShell and cmd on Windows).
+// directory, where PureTerm knows how (PowerShell and cmd on Windows).
 func WithCwdReporting(shell string, args, env []string) ([]string, []string) {
 	return withCwdReporting(shell, args, env)
 }

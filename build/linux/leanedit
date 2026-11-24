@@ -1,9 +1,0 @@
-#!/bin/sh
-# LeanEdit on its own, the text editor of LeanTerm: leanedit [options] [--] [files...]
-# runs leanterm -leanedit from the same folder (following a symbolic link to
-# this script).
-self=$0
-if [ -L "$self" ] && command -v readlink >/dev/null 2>&1; then
-	self=$(readlink -f "$self")
-fi
-exec "$(dirname "$self")/leanterm" -leanedit "$@"

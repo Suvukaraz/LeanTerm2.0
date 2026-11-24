@@ -14,7 +14,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	toml "github.com/pelletier/go-toml/v2"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/platform"
+	"github.com/Suvukaraz/PureTerm/internal/platform"
 )
 
 var (
@@ -51,6 +51,9 @@ func (s *Store) ConfigDir() string {
 }
 
 func GetDefaultConfigDir() string {
+	if env := os.Getenv("PURETERM_CONFIG_DIR"); env != "" {
+		return env
+	}
 	if env := os.Getenv("LEANTERM_CONFIG_DIR"); env != "" {
 		return env
 	}
@@ -59,7 +62,12 @@ func GetDefaultConfigDir() string {
 		return filepath.Join(".config", platform.AppDirName)
 	}
 	dir := filepath.Join(base, platform.AppDirName)
-	migrateLegacyConfigDir(filepath.Join(base, "linxterm"), dir)
+	// Migrate from former names (LeanTerm, LinXTerm) once if PureTerm does not exist yet.
+	for _, old := range []string{"LeanTerm", "leanterm", "linxterm"} {
+		if old != platform.AppDirName {
+			migrateLegacyConfigDir(filepath.Join(base, old), dir)
+		}
+	}
 	return dir
 }
 
@@ -342,8 +350,8 @@ func (s *Store) saveLocked() error {
 }
 
 // UpdateOnDisk re-reads config.toml, applies change to it and writes it back
-// right away. LeanEdit uses it: it runs as its own process next to LeanTerm, so
-// it must only change its own settings in the file LeanTerm may have saved
+// right away. PureEdit uses it: it runs as its own process next to PureTerm, so
+// it must only change its own settings in the file PureTerm may have saved
 // meanwhile, never write back an older copy of everything else.
 func (s *Store) UpdateOnDisk(change func(cfg *Config)) error {
 	s.mu.Lock()

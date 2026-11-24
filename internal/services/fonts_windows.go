@@ -5,7 +5,9 @@ package services
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -18,7 +20,7 @@ const fontsKey = `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts`
 func listFontFaces() ([]fontFace, error) {
 	fontDir := filepath.Join(os.Getenv("WINDIR"), "Fonts")
 	seen := map[string]bool{}
-	var faces []fontFace
+	var paths []string
 	for _, root := range []registry.Key{registry.LOCAL_MACHINE, registry.CURRENT_USER} {
 		for _, file := range registeredFontFiles(root) {
 			if !filepath.IsAbs(file) {
@@ -34,16 +36,45 @@ func listFontFaces() ([]fontFace, error) {
 			default:
 				continue // bitmap (.fon) and vector fonts cannot be used by the view
 			}
-			f, err := os.Open(file)
-			if err != nil {
-				continue
-			}
-			if fs, err := parseFontFile(f); err == nil {
-				faces = append(faces, fs...)
-			}
-			f.Close()
+			paths = append(paths, file)
 		}
 	}
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	workers := min(max(runtime.GOMAXPROCS(0), 2), 8)
+	ch := make(chan string, len(paths))
+	for _, p := range paths {
+		ch <- p
+	}
+	close(ch)
+
+	var mu sync.Mutex
+	var faces []fontFace
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var local []fontFace
+			for file := range ch {
+				f, err := os.Open(file)
+				if err != nil {
+					continue
+				}
+				if fs, err := parseFontFile(f); err == nil {
+					local = append(local, fs...)
+				}
+				_ = f.Close()
+			}
+			if len(local) > 0 {
+				mu.Lock()
+				faces = append(faces, local...)
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
 	return faces, nil
 }
 

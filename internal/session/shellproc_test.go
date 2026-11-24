@@ -12,10 +12,10 @@ import (
 // Starts a real shell in a pseudo terminal (PTY on Unix, ConPTY on Windows) and
 // checks output, resizing and exit.
 func TestStartShellRunsCommand(t *testing.T) {
-	spec := shellSpec{Path: "/bin/sh", Args: []string{"-c", "echo leanterm-ok"}, Env: os.Environ(), Cols: 100, Rows: 30}
+	spec := shellSpec{Path: "/bin/sh", Args: []string{"-c", "echo pureterm-ok"}, Env: os.Environ(), Cols: 100, Rows: 30}
 	if runtime.GOOS == "windows" {
 		spec.Path = "cmd.exe"
-		spec.Args = []string{"/c", "echo leanterm-ok"}
+		spec.Args = []string{"/c", "echo pureterm-ok"}
 	}
 	dir, err := os.UserHomeDir()
 	if err != nil {
@@ -41,7 +41,7 @@ func TestStartShellRunsCommand(t *testing.T) {
 	go func() {
 		var sb strings.Builder
 		buf := make([]byte, 4096)
-		for !strings.Contains(sb.String(), "leanterm-ok") {
+		for !strings.Contains(sb.String(), "pureterm-ok") {
 			n, err := proc.Read(buf)
 			sb.Write(buf[:n])
 			if err != nil {
@@ -53,7 +53,7 @@ func TestStartShellRunsCommand(t *testing.T) {
 
 	select {
 	case out := <-output:
-		if !strings.Contains(out, "leanterm-ok") {
+		if !strings.Contains(out, "pureterm-ok") {
 			t.Fatalf("output %q does not contain the echoed text", out)
 		}
 	case <-ctx.Done():

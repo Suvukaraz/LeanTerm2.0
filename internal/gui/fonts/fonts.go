@@ -1,4 +1,4 @@
-// Package fonts loads the faces LeanTerm's GUI shapes text with: the system's
+// Package fonts loads the faces PureTerm's GUI shapes text with: the system's
 // UI and monospace fonts when they can be found, else Gio's Go fonts.
 package fonts
 
@@ -21,8 +21,8 @@ import (
 
 // Typefaces used by the GUI.
 const (
-	UI        font.Typeface = "LeanTerm UI"
-	Monospace font.Typeface = "LeanTerm Mono"
+	UI        font.Typeface = "PureTerm UI"
+	Monospace font.Typeface = "PureTerm Mono"
 	// Symbols is the Nerd Fonts symbol font, for icons (see icons.go).
 	Symbols font.Typeface = "Symbols Nerd Font"
 )
@@ -47,34 +47,57 @@ func fontconfigCandidates() []candidate {
 	if err != nil {
 		return nil
 	}
-	var out []candidate
-	seen := map[string]bool{}
+	type query struct {
+		typeface font.Typeface
+		pattern  string
+		style    font.Style
+		weight   font.Weight
+	}
+	variants := []struct {
+		suffix string
+		style  font.Style
+		weight font.Weight
+	}{
+		{"", font.Regular, font.Normal},
+		{":medium", font.Regular, font.Medium},
+		{":semibold", font.Regular, font.SemiBold},
+		{":bold", font.Regular, font.Bold},
+		{":italic", font.Italic, font.Normal},
+		{":bold:italic", font.Italic, font.Bold},
+	}
+	var queries []query
 	for _, tf := range []struct {
 		typeface font.Typeface
 		pattern  string
 	}{{UI, "system-ui"}, {Monospace, "monospace"}} {
-		for _, v := range []struct {
-			suffix string
-			style  font.Style
-			weight font.Weight
-		}{
-			{"", font.Regular, font.Normal},
-			{":medium", font.Regular, font.Medium},
-			{":semibold", font.Regular, font.SemiBold},
-			{":bold", font.Regular, font.Bold},
-			{":italic", font.Italic, font.Normal},
-			{":bold:italic", font.Italic, font.Bold},
-		} {
-			b, err := exec.Command(fcMatch, "-f", "%{file}", tf.pattern+v.suffix).Output()
-			path := strings.TrimSpace(string(b))
-			// A weight the family lacks resolves to another face: skip it, the
-			// shaper picks the nearest one.
-			if err != nil || path == "" || seen[path] {
-				continue
-			}
-			seen[path] = true
-			out = append(out, candidate{tf.typeface, v.style, v.weight, []string{path}})
+		for _, v := range variants {
+			queries = append(queries, query{tf.typeface, tf.pattern + v.suffix, v.style, v.weight})
 		}
+	}
+	paths := make([]string, len(queries))
+	var wg sync.WaitGroup
+	for i, q := range queries {
+		wg.Add(1)
+		go func(i int, pat string) {
+			defer wg.Done()
+			if b, err := exec.Command(fcMatch, "-f", "%{file}", pat).Output(); err == nil {
+				paths[i] = strings.TrimSpace(string(b))
+			}
+		}(i, q.pattern)
+	}
+	wg.Wait()
+
+	var out []candidate
+	seen := map[string]bool{}
+	for i, q := range queries {
+		p := paths[i]
+		// A weight the family lacks resolves to another face: skip it, the
+		// shaper picks the nearest one.
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		out = append(out, candidate{q.typeface, q.style, q.weight, []string{p}})
 	}
 	return out
 }
@@ -146,33 +169,94 @@ func MonospaceData() []byte {
 // system faces lack.
 func Collection() []font.FontFace {
 	once.Do(func() {
-		for _, c := range candidates() {
-			for _, p := range c.paths {
-				data, err := os.ReadFile(p)
-				if err != nil {
-					continue
-				}
-				face, err := opentype.Parse(data)
-				if err != nil {
-					continue
-				}
-				collection = append(collection, font.FontFace{
-					Font: font.Font{Typeface: c.typeface, Style: c.style, Weight: c.weight},
-					Face: face,
-				})
-				if c.typeface == Monospace && c.style == font.Regular && c.weight == font.Normal {
-					monoData = data
-				}
-				break
+		var (
+			cands     []candidate
+			fbSrcs    []fallbackSrc
+			candFaces []font.FontFace
+			candMono  []byte
+			fbFaces   []font.FontFace
+			symFace   opentype.Face
+			symOK     bool
+		)
+
+		// Discover candidates and fallback paths concurrently (fc-match on Linux).
+		var discWG sync.WaitGroup
+		discWG.Add(2)
+		go func() {
+			defer discWG.Done()
+			cands = candidates()
+		}()
+		go func() {
+			defer discWG.Done()
+			fbSrcs = fallbackSources()
+		}()
+
+		// Parse the embedded symbols font concurrently with discovery.
+		var parseWG sync.WaitGroup
+		parseWG.Add(1)
+		go func() {
+			defer parseWG.Done()
+			if f, err := opentype.Parse(symbolsTTF); err == nil {
+				symFace, symOK = f, true
 			}
+		}()
+
+		discWG.Wait()
+
+		candFaces = make([]font.FontFace, len(cands))
+		candOK := make([]bool, len(cands))
+		for i, c := range cands {
+			parseWG.Add(1)
+			go func(i int, c candidate) {
+				defer parseWG.Done()
+				for _, p := range c.paths {
+					data, err := os.ReadFile(p)
+					if err != nil {
+						continue
+					}
+					face, err := opentype.Parse(data)
+					if err != nil {
+						continue
+					}
+					candFaces[i] = font.FontFace{
+						Font: font.Font{Typeface: c.typeface, Style: c.style, Weight: c.weight},
+						Face: face,
+					}
+					candOK[i] = true
+					if c.typeface == Monospace && c.style == font.Regular && c.weight == font.Normal {
+						candMono = data
+					}
+					return
+				}
+			}(i, c)
+		}
+
+		// Read each unique fallback file once, then parse each needed face index in parallel.
+		if len(fbSrcs) > 0 {
+			parseWG.Add(1)
+			go func() {
+				defer parseWG.Done()
+				fbFaces = loadFallbackFaces(fbSrcs)
+			}()
+		}
+
+		parseWG.Wait()
+
+		for i := range cands {
+			if candOK[i] {
+				collection = append(collection, candFaces[i])
+			}
+		}
+		if candMono != nil {
+			monoData = candMono
 		}
 		// System fonts for scripts and emoji the UI and monospace fonts
 		// lack (CJK, color emoji): the shaper falls back to them.
-		collection = append(collection, fallbackFaces()...)
+		collection = append(collection, fbFaces...)
 		// Nerd Font symbols: icons, and the fallback for Powerline and other
 		// Nerd Font glyphs in prompts.
-		if face, err := opentype.Parse(symbolsTTF); err == nil {
-			collection = append(collection, font.FontFace{Font: font.Font{Typeface: Symbols}, Face: face})
+		if symOK {
+			collection = append(collection, font.FontFace{Font: font.Font{Typeface: Symbols}, Face: symFace})
 		}
 		// Go fonts under our names, so a missing system face still resolves.
 		// Only where there is no system face: with two faces of the same
@@ -202,20 +286,21 @@ func Collection() []font.FontFace {
 }
 
 // Fallback is the name prefix of the system faces for characters the UI
-// and monospace fonts do not have ("LeanTerm Fallback 1", ...): each face
+// and monospace fonts do not have ("PureTerm Fallback 1", ...): each face
 // needs its own name, as Gio keeps one face per name, weight and style.
-const Fallback font.Typeface = "LeanTerm Fallback"
+const Fallback font.Typeface = "PureTerm Fallback"
 
-// fallbackFaces loads system fonts for CJK and emoji: fontconfig's choice
+type fallbackSrc struct {
+	path  string
+	index int
+}
+
+// fallbackSources finds system fonts for CJK and emoji: fontconfig's choice
 // on Linux, the fonts Windows ships elsewhere.
-func fallbackFaces() []font.FontFace {
-	type src struct {
-		path  string
-		index int
-	}
-	var srcs []src
-	seen := map[src]bool{}
-	add := func(s src) {
+func fallbackSources() []fallbackSrc {
+	var srcs []fallbackSrc
+	seen := map[fallbackSrc]bool{}
+	add := func(s fallbackSrc) {
 		if s.path != "" && !seen[s] {
 			seen[s] = true
 			srcs = append(srcs, s)
@@ -223,37 +308,92 @@ func fallbackFaces() []font.FontFace {
 	}
 	if runtime.GOOS == "linux" {
 		if fc, err := exec.LookPath("fc-match"); err == nil {
-			for _, pattern := range []string{"monospace:lang=ja", "monospace:lang=zh-cn", "monospace:lang=ko", "emoji"} {
-				out, err := exec.Command(fc, "-f", "%{file}\n%{index}", pattern).Output()
-				if err != nil {
-					continue
-				}
-				parts := strings.SplitN(string(out), "\n", 2)
-				idx := 0
-				if len(parts) == 2 {
-					idx, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-				}
-				add(src{strings.TrimSpace(parts[0]), idx})
+			patterns := []string{"monospace:lang=ja", "monospace:lang=zh-cn", "monospace:lang=ko", "emoji"}
+			found := make([]fallbackSrc, len(patterns))
+			var wg sync.WaitGroup
+			for i, pattern := range patterns {
+				wg.Add(1)
+				go func(i int, pat string) {
+					defer wg.Done()
+					out, err := exec.Command(fc, "-f", "%{file}\n%{index}", pat).Output()
+					if err != nil {
+						return
+					}
+					parts := strings.SplitN(string(out), "\n", 2)
+					idx := 0
+					if len(parts) == 2 {
+						idx, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
+					}
+					found[i] = fallbackSrc{strings.TrimSpace(parts[0]), idx}
+				}(i, pattern)
+			}
+			wg.Wait()
+			for _, s := range found {
+				add(s)
 			}
 		}
 	}
 	if runtime.GOOS == "windows" {
 		dir := filepath.Join(os.Getenv("WINDIR"), "Fonts")
 		for _, n := range []string{"msgothic.ttc", "msyh.ttc", "malgun.ttf", "seguiemj.ttf"} {
-			add(src{filepath.Join(dir, n), 0})
+			add(fallbackSrc{filepath.Join(dir, n), 0})
 		}
 	}
-	var out []font.FontFace
+	return srcs
+}
+
+func loadFallbackFaces(srcs []fallbackSrc) []font.FontFace {
+	// Read each unique file once (on Linux, CJK patterns often share one .ttc).
+	uniquePaths := make([]string, 0, len(srcs))
+	fileData := map[string][]byte{}
 	for _, s := range srcs {
-		data, err := os.ReadFile(s.path)
-		if err != nil {
+		if _, ok := fileData[s.path]; !ok {
+			fileData[s.path] = nil
+			uniquePaths = append(uniquePaths, s.path)
+		}
+	}
+	var readWG sync.WaitGroup
+	var mu sync.Mutex
+	for _, p := range uniquePaths {
+		readWG.Add(1)
+		go func(p string) {
+			defer readWG.Done()
+			if data, err := os.ReadFile(p); err == nil {
+				mu.Lock()
+				fileData[p] = data
+				mu.Unlock()
+			}
+		}(p)
+	}
+	readWG.Wait()
+
+	parsed := make([]font.FontFace, len(srcs))
+	ok := make([]bool, len(srcs))
+	var parseWG sync.WaitGroup
+	for i, s := range srcs {
+		data := fileData[s.path]
+		if len(data) == 0 {
 			continue
 		}
-		faces, err := opentype.ParseCollection(data)
-		if err != nil || len(faces) == 0 {
+		parseWG.Add(1)
+		go func(i int, s fallbackSrc, data []byte) {
+			defer parseWG.Done()
+			f, err := opentype.ParseIndex(data, s.index)
+			if err != nil {
+				return
+			}
+			parsed[i] = f
+			ok[i] = true
+		}(i, s, data)
+	}
+	parseWG.Wait()
+
+	var out []font.FontFace
+	for i := range srcs {
+		if !ok[i] {
 			continue
 		}
-		f := faces[min(s.index, len(faces)-1)]
+		f := parsed[i]
 		f.Font = font.Font{Typeface: font.Typeface(fmt.Sprintf("%s %d", Fallback, len(out)+1))}
 		out = append(out, f)
 	}

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/appcore"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/term"
+	"github.com/Suvukaraz/PureTerm/internal/gui/appcore"
+	"github.com/Suvukaraz/PureTerm/internal/gui/term"
 )
 
 // The whole path of a native terminal tab: backend (appcore), a local shell

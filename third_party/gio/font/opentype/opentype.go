@@ -74,6 +74,35 @@ func ParseCollection(src []byte) ([]giofont.FontFace, error) {
 	return out, nil
 }
 
+// ParseIndex parses a single face at index from an OpenType font or
+// collection without parsing the remaining faces in the collection (PureTerm patch).
+func ParseIndex(src []byte, index int) (giofont.FontFace, error) {
+	lds, err := opentype.NewLoaders(bytes.NewReader(src))
+	if err != nil {
+		return giofont.FontFace{}, err
+	}
+	if len(lds) == 0 {
+		return giofont.FontFace{}, fmt.Errorf("empty font collection")
+	}
+	if index < 0 {
+		index = 0
+	} else if index >= len(lds) {
+		index = len(lds) - 1
+	}
+	face, md, err := parseLoader(lds[index])
+	if err != nil {
+		return giofont.FontFace{}, fmt.Errorf("reading font %d of collection: %w", index, err)
+	}
+	ff := Face{
+		face: face,
+		font: md,
+	}
+	return giofont.FontFace{
+		Face: ff,
+		Font: ff.Font(),
+	}, nil
+}
+
 func DescriptionToFont(md fontapi.Description) giofont.Font {
 	return giofont.Font{
 		Typeface: giofont.Typeface(md.Family),

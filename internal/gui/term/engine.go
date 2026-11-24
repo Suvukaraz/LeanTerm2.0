@@ -1,4 +1,4 @@
-// Package term is LeanTerm's engine-neutral terminal core. A terminal engine
+// Package term is PureTerm's engine-neutral terminal core. A terminal engine
 // parses the output of a program (VT sequences) into a grid of cells and
 // encodes keyboard and paste input for it; the GUI only talks to [Engine], so
 // the engines can be swapped per terminal:

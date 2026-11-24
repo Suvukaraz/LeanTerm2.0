@@ -22,10 +22,10 @@ type Line struct {
 	// runeOff tracks the rune offset of the first rune of the line in the document.
 	RuneOff int
 	// Indent moves a wrapped continuation line right to the paragraph's
-	// indentation (LeanTerm: KWrite's "align dynamically wrapped lines to
+	// indentation (PureTerm: KWrite's "align dynamically wrapped lines to
 	// indentation depth").
 	Indent fixed.Int26_6
-	// Hidden marks the lines of a folded paragraph (LeanTerm: code folding).
+	// Hidden marks the lines of a folded paragraph (PureTerm: code folding).
 	// They take no vertical space: their YOff is the one of the visible line
 	// above.
 	Hidden bool
@@ -182,7 +182,7 @@ type Paragraph struct {
 	Runes int
 	// RuneOff tracks the rune offset of the first rune of the paragraph in the document.
 	RuneOff int
-	// Hidden marks a folded paragraph (LeanTerm: code folding).
+	// Hidden marks a folded paragraph (PureTerm: code folding).
 	Hidden bool
 }
 

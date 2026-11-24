@@ -4,13 +4,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/secrets"
+	"github.com/Suvukaraz/PureTerm/internal/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func setupTestTree(t *testing.T) (*Store, *secrets.Vault, *TreeManager, func()) {
-	tmpDir, err := os.MkdirTemp("", "leanterm-tree-*")
+	tmpDir, err := os.MkdirTemp("", "pureterm-tree-*")
 	require.NoError(t, err)
 
 	store, err := NewStore(StoreOptions{ConfigDir: tmpDir})

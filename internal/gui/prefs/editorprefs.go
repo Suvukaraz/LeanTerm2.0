@@ -7,14 +7,14 @@ import (
 	"gioui.org/layout"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/services"
 )
 
-// EditorPrefs is LeanEdit's settings window: only
+// EditorPrefs is PureEdit's settings window: only
 // the editor settings, with Cancel, Apply and OK. It fills its own window.
 type EditorPrefs struct {
 	Load func() services.EditorSettings

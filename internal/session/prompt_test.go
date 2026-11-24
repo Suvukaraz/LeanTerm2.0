@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/config"
 )
 
 func TestPromptMatcherLoginFlow(t *testing.T) {

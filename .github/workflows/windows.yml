@@ -1,5 +1,5 @@
-# Tests LeanTerm on Windows and builds the installer as a downloadable artifact:
-# the GUI (cmd/leanterm) with the libghostty engine, cross-compiled on Linux the
+# Tests PureTerm on Windows and builds the installer as a downloadable artifact:
+# the GUI (cmd/pureterm) with the libghostty engine, cross-compiled on Linux the
 # same way as in the release (see the CI workflow).
 name: Windows
 
@@ -27,7 +27,7 @@ jobs:
           go-version-file: go.mod
 
       # Native, without cgo: vt engine, ConPTY shells (x/xpty), widgets,
-      # the LeanEdit single instance.
+      # the PureEdit single instance.
       - name: Go tests
         run: |
           go vet ./...
@@ -87,5 +87,5 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: leanterm-windows-installer
+          name: pureterm-windows-installer
           path: bin/*_setup.exe

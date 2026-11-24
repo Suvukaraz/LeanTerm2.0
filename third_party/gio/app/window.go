@@ -117,7 +117,7 @@ type eventSummary struct {
 	framePending bool
 	closing      *ClosingEvent
 	destroy      *DestroyEvent
-	// drops are files dropped on the window (LeanTerm patch).
+	// drops are files dropped on the window (PureTerm patch).
 	drops []FileDropEvent
 }
 

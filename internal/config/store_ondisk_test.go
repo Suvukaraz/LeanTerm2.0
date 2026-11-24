@@ -8,35 +8,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// LeanEdit (a second process) changes only the editor settings and keeps what
-// LeanTerm wrote to config.toml after LeanEdit loaded it.
+// PureEdit (a second process) changes only the editor settings and keeps what
+// PureTerm wrote to config.toml after PureEdit loaded it.
 func TestUpdateOnDiskKeepsOtherChanges(t *testing.T) {
 	dir := t.TempDir()
-	leanTerm, err := NewStore(StoreOptions{ConfigDir: dir, NoBackup: true})
+	pureTerm, err := NewStore(StoreOptions{ConfigDir: dir, NoBackup: true})
 	require.NoError(t, err)
-	require.NoError(t, leanTerm.Load())
-	require.NoError(t, leanTerm.Save())
+	require.NoError(t, pureTerm.Load())
+	require.NoError(t, pureTerm.Save())
 
-	leanEdit, err := NewStore(StoreOptions{ConfigDir: dir, NoBackup: true})
+	pureEdit, err := NewStore(StoreOptions{ConfigDir: dir, NoBackup: true})
 	require.NoError(t, err)
-	require.NoError(t, leanEdit.Load())
+	require.NoError(t, pureEdit.Load())
 
-	// LeanTerm saves another setting after LeanEdit started.
-	leanTerm.Config().Terminal.ScreenshotsFolder = "/tmp/shots"
-	require.NoError(t, leanTerm.Save())
+	// PureTerm saves another setting after PureEdit started.
+	pureTerm.Config().Terminal.ScreenshotsFolder = "/tmp/shots"
+	require.NoError(t, pureTerm.Save())
 
-	require.NoError(t, leanEdit.UpdateOnDisk(func(cfg *Config) { cfg.Editor.TabWidth = 8 }))
-	assert.Equal(t, 8, leanEdit.Config().Editor.TabWidth)
+	require.NoError(t, pureEdit.UpdateOnDisk(func(cfg *Config) { cfg.Editor.TabWidth = 8 }))
+	assert.Equal(t, 8, pureEdit.Config().Editor.TabWidth)
 
-	data, err := os.ReadFile(leanTerm.ConfigPath())
+	data, err := os.ReadFile(pureTerm.ConfigPath())
 	require.NoError(t, err)
-	reloaded, err := leanTerm.parseConfig(data)
+	reloaded, err := pureTerm.parseConfig(data)
 	require.NoError(t, err)
 	assert.Equal(t, 8, reloaded.Editor.TabWidth)
 	assert.Equal(t, "/tmp/shots", reloaded.Terminal.ScreenshotsFolder)
 
 	// Invalid values are rejected and nothing is written.
-	assert.Error(t, leanEdit.UpdateOnDisk(func(cfg *Config) { cfg.Editor.TabWidth = 99 }))
-	data2, _ := os.ReadFile(leanTerm.ConfigPath())
+	assert.Error(t, pureEdit.UpdateOnDisk(func(cfg *Config) { cfg.Editor.TabWidth = 99 }))
+	data2, _ := os.ReadFile(pureTerm.ConfigPath())
 	assert.Equal(t, data, data2)
 }

@@ -71,7 +71,7 @@ func (LocalFS) WriteFile(path string, data []byte) error {
 		mode = orig.Mode().Perm()
 	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".leanterm-*")
+	tmp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".pureterm-*")
 	if err != nil {
 		return os.WriteFile(target, data, mode)
 	}

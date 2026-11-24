@@ -1,14 +1,14 @@
 # Builds the Linux packages (the GUI with the libghostty engine) and checks
 # install.sh on the supported distributions: install, start (--help loads all
-# libraries), the leanedit launcher, uninstall.
+# libraries), the pureedit launcher, uninstall.
 name: Linux install
 
 on:
   push:
     branches: [main]
-    paths: [install.sh, VERSION, build/package-deb.sh, build/package-tarball.sh, build/linux/**, build/gio/**, cmd/leanterm/**, internal/**, third_party/**, '*.go', go.mod, go.sum, .github/workflows/linux-install.yml]
+    paths: [install.sh, VERSION, build/package-deb.sh, build/package-tarball.sh, build/linux/**, build/gio/**, cmd/pureterm/**, internal/**, third_party/**, '*.go', go.mod, go.sum, .github/workflows/linux-install.yml]
   pull_request:
-    paths: [install.sh, VERSION, build/package-deb.sh, build/package-tarball.sh, build/linux/**, build/gio/**, cmd/leanterm/**, internal/**, third_party/**, '*.go', go.mod, go.sum, .github/workflows/linux-install.yml]
+    paths: [install.sh, VERSION, build/package-deb.sh, build/package-tarball.sh, build/linux/**, build/gio/**, cmd/pureterm/**, internal/**, third_party/**, '*.go', go.mod, go.sum, .github/workflows/linux-install.yml]
   workflow_dispatch:
 
 env:
@@ -78,7 +78,7 @@ jobs:
           cp bin/*.deb bin/*.tar.gz install.sh dist/
           (cd dist && sha256sum *.deb *.tar.gz > SHA256SUMS)
           # The binary must not need a newer glibc than 2.34.
-          objdump -T bin/leanterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+          objdump -T bin/pureterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
 
       - uses: actions/upload-artifact@v7
         with:
@@ -104,7 +104,7 @@ jobs:
             prep: pacman -Syu --noconfirm curl tar gzip
     container: ${{ matrix.image }}
     env:
-      LEANTERM_VERSION: ${{ needs.build.outputs.version }}
+      PURETERM_VERSION: ${{ needs.build.outputs.version }}
     steps:
       - name: Prepare
         run: ${{ matrix.prep }}
@@ -115,17 +115,17 @@ jobs:
           path: dist
 
       - name: Install
-        run: LEANTERM_BASE_URL="file://$PWD/dist" sh dist/install.sh
+        run: PURETERM_BASE_URL="file://$PWD/dist" sh dist/install.sh
 
       - name: Check installation
         run: |
-          leanterm --help 2>&1 | head -n 1
-          leanedit -h >/dev/null 2>&1
-          ls /usr/share/applications/org.leanterm.LeanTerm.desktop /usr/local/share/applications/org.leanterm.LeanTerm.desktop 2>/dev/null | grep -q .
-          ls /usr/share/applications/org.leanterm.LeanEdit.desktop /usr/local/share/applications/org.leanterm.LeanEdit.desktop 2>/dev/null | grep -q .
+          pureterm --help 2>&1 | head -n 1
+          pureedit -h >/dev/null 2>&1
+          ls /usr/share/applications/org.pureterm.PureTerm.desktop /usr/local/share/applications/org.pureterm.PureTerm.desktop 2>/dev/null | grep -q .
+          ls /usr/share/applications/org.pureterm.PureEdit.desktop /usr/local/share/applications/org.pureterm.PureEdit.desktop 2>/dev/null | grep -q .
 
       - name: Uninstall
         run: |
           sh dist/install.sh --uninstall
-          if command -v leanterm; then echo "leanterm is still installed"; exit 1; fi
-          if command -v leanedit; then echo "leanedit is still installed"; exit 1; fi
+          if command -v pureterm; then echo "pureterm is still installed"; exit 1; fi
+          if command -v pureedit; then echo "pureedit is still installed"; exit 1; fi

@@ -1,4 +1,4 @@
-# Tests LeanTerm on Linux and Windows and builds the packages as artifacts: the
+# Tests PureTerm on Linux and Windows and builds the packages as artifacts: the
 # Go tests with both terminal engines (libghostty-vt through cgo, built with
 # Zig, and the pure Go vt engine), a build of the GUI and a run of it under a
 # virtual display (Linux) or on the Windows desktop.
@@ -67,7 +67,7 @@ jobs:
           key: libghostty-vt-${{ env.GHOSTTY_COMMIT }}-zig${{ env.ZIG_VERSION }}
 
       - name: Desktop entries
-        run: desktop-file-validate build/linux/org.leanterm.LeanTerm.desktop build/linux/org.leanterm.LeanEdit.desktop
+        run: desktop-file-validate build/linux/org.pureterm.PureTerm.desktop build/linux/org.pureterm.PureEdit.desktop
 
       - name: Tests (both engines)
         env:
@@ -80,13 +80,13 @@ jobs:
           # Parsing speed of plain output (seq) for each engine.
           go test -run '^$' -bench Feed -benchtime 3x -tags ghostty ./internal/gui/term/
 
-      - name: Build LeanTerm
+      - name: Build PureTerm
         env:
           PKG_CONFIG_PATH: ${{ runner.temp }}/ghostty/linux/lib/pkgconfig
         run: |
-          go build -tags ghostty -trimpath -o bin/leanterm ./cmd/leanterm
+          go build -tags ghostty -trimpath -o bin/pureterm ./cmd/pureterm
           # The binary must not need a newer glibc than 2.34.
-          objdump -T bin/leanterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
+          objdump -T bin/pureterm | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
 
       - name: Cross-build for Windows (Ghostty engine via zig cc)
         env:
@@ -99,7 +99,8 @@ jobs:
           CGO_LDFLAGS_ALLOW: '.*[.]lib$'
         run: |
           mkdir -p bin/windows
-          go build -tags ghostty -trimpath -o bin/windows/leanterm.exe ./cmd/leanterm
+          go build -tags ghostty -trimpath -ldflags="-H windowsgui -extldflags=-Wl,--subsystem,windows" -o bin/windows/pureterm.exe ./cmd/pureterm
+          python3 -c 'import struct,sys; d=open(sys.argv[1],"rb").read(4096); p=struct.unpack_from("<I",d,0x3c)[0]; s=struct.unpack_from("<H",d,p+92)[0]; assert s==2, f"subsystem={s}"' bin/windows/pureterm.exe
           go test -c -tags ghostty -o bin/windows/term.test.exe ./internal/gui/term/
           go test -c -tags ghostty -o bin/windows/termview.test.exe ./internal/gui/termview/
           go test -c -tags ghostty -o bin/windows/codeedit.test.exe ./internal/gui/codeedit/
@@ -113,12 +114,12 @@ jobs:
           export DISPLAY=:98 LANG=C.UTF-8
           Xvfb :98 -screen 0 1280x800x24 & sleep 2
           cfg=$(mktemp -d); cp build/gio/demo-config/config.toml "$cfg/"
-          SHELL=/bin/bash bin/leanterm -config-dir "$cfg" > leanterm.log 2>&1 & APP=$!
+          SHELL=/bin/bash bin/pureterm -config-dir "$cfg" > pureterm.log 2>&1 & APP=$!
           sleep 5
           xwd -root -silent | convert xwd:- screenshot-start.png
           # The window's application id matches its .desktop file (taskbar, icon).
-          xprop -id "$(xdotool search --classname org.leanterm.LeanTerm | head -n 1)" WM_CLASS | tee wmclass.txt
-          grep -q 'org.leanterm.LeanTerm' wmclass.txt
+          xprop -id "$(xdotool search --classname org.pureterm.PureTerm | head -n 1)" WM_CLASS | tee wmclass.txt
+          grep -q 'org.pureterm.PureTerm' wmclass.txt
           # Expand "Lab" (second row of the tree), right-click "demo-ssh".
           xdotool mousemove 28 123 click 1; sleep 1
           xwd -root -silent | convert xwd:- screenshot-expanded.png
@@ -139,22 +140,22 @@ jobs:
           xdotool key Escape; sleep 0.3
           kill -0 $APP
           kill $APP
-          cat leanterm.log
+          cat pureterm.log
           # -quit-after exits cleanly through the UI thread.
-          timeout 30 bin/leanterm -config-dir "$cfg" -quit-after 4s
-          # LeanEdit on its own: open a file, type, save, search, quit.
+          timeout 30 bin/pureterm -config-dir "$cfg" -quit-after 4s
+          # PureEdit on its own: open a file, type, save, search, quit.
           ed=$(mktemp -d); cp internal/gui/codeedit/editor.go "$ed/sample.go"
-          bin/leanterm -leanedit -config-dir "$cfg" "$ed/sample.go" > leanedit.log 2>&1 & ED=$!
+          bin/pureterm -pureedit -config-dir "$cfg" "$ed/sample.go" > pureedit.log 2>&1 & ED=$!
           sleep 4
           xdotool mousemove 300 96 click 1; xdotool key End; xdotool type --delay 15 ' // ci'
           xdotool key ctrl+s; sleep 1
           head -1 "$ed/sample.go" | grep -q 'package codeedit // ci'
           xdotool key ctrl+f; sleep 0.3; xdotool type --delay 15 'gioui'; xdotool key Return; sleep 0.5
-          xwd -root -silent | convert xwd:- screenshot-leanedit.png
+          xwd -root -silent | convert xwd:- screenshot-pureedit.png
           xdotool key Escape; sleep 0.3
-          # LeanEdit is an application of its own, and files dropped from a
+          # PureEdit is an application of its own, and files dropped from a
           # file manager (XDND) open in it.
-          LE=$(xdotool search --classname org.leanterm.LeanEdit | head -n 1)
+          LE=$(xdotool search --classname org.pureterm.PureEdit | head -n 1)
           test -n "$LE"
           cc -o xdnd-drop build/ci/xdnd-drop.c -lX11
           printf 'dropped\n' > "$ed/dropped file.txt"
@@ -162,26 +163,26 @@ jobs:
           sleep 2
           xdotool getwindowname "$LE" | tee title.txt
           grep -q 'dropped file.txt' title.txt
-          # A second LeanEdit hands its file to the running one and exits.
+          # A second PureEdit hands its file to the running one and exits.
           printf 'second\n' > "$ed/second.txt"
-          timeout 20 bin/leanterm -leanedit -config-dir "$cfg" -- "$ed/second.txt"
+          timeout 20 bin/pureterm -pureedit -config-dir "$cfg" -- "$ed/second.txt"
           sleep 2
           xdotool getwindowname "$LE" | grep -q 'second.txt'
-          xwd -root -silent | convert xwd:- screenshot-leanedit-drop.png
+          xwd -root -silent | convert xwd:- screenshot-pureedit-drop.png
           xdotool key ctrl+q; sleep 2
-          if kill -0 $ED 2>/dev/null; then cat leanedit.log; echo "LeanEdit did not quit"; exit 1; fi
+          if kill -0 $ED 2>/dev/null; then cat pureedit.log; echo "PureEdit did not quit"; exit 1; fi
 
       - uses: actions/upload-artifact@v7
         with:
-          name: leanterm-linux
+          name: pureterm-linux
           path: |
-            bin/leanterm
+            bin/pureterm
             screenshot-*.png
-            leanedit.log
+            pureedit.log
 
       - uses: actions/upload-artifact@v7
         with:
-          name: leanterm-windows-build
+          name: pureterm-windows-build
           path: bin/windows/
 
   windows:
@@ -205,7 +206,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: leanterm-windows-build
+          name: pureterm-windows-build
           path: bin
 
       # The test binaries cross-compiled with libghostty-vt, run in their
@@ -223,8 +224,8 @@ jobs:
         run: |
           $cfg = New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\cfg"
           Copy-Item build\gio\demo-config\config.toml $cfg
-          $p = Start-Process -FilePath bin\leanterm.exe -ArgumentList '-config-dir', "$cfg", '-quit-after', '10s' `
-            -RedirectStandardError leanterm.log -RedirectStandardOutput leanterm.out -PassThru
+          $p = Start-Process -FilePath bin\pureterm.exe -ArgumentList '-config-dir', "$cfg", '-quit-after', '10s' `
+            -RedirectStandardError pureterm.log -RedirectStandardOutput pureterm.out -PassThru
           Start-Sleep -Seconds 6
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -232,31 +233,31 @@ jobs:
           [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
           $bmp.Save("$PWD\screenshot-windows.png")
           $done = $p.WaitForExit(40000)
-          Get-Content leanterm.log
+          Get-Content pureterm.log
           if (-not $done) { Stop-Process -Id $p.Id -Force; throw 'the main window did not quit' }
           if ($p.ExitCode -ne 0) { throw "exit code $($p.ExitCode)" }
-          if (-not (Select-String -Path leanterm.log -Pattern 'file drop enabled')) { throw 'file drop was not enabled' }
+          if (-not (Select-String -Path pureterm.log -Pattern 'file drop enabled')) { throw 'file drop was not enabled' }
 
       # The installer writes the AppUserModelID into the shortcuts (taskbar
-      # grouping and pinning of LeanTerm and LeanEdit).
+      # grouping and pinning of PureTerm and PureEdit).
       - name: Shortcut AppUserModelID
         shell: pwsh
         run: |
-          $lnk = "$env:RUNNER_TEMP\LeanEdit.lnk"
+          $lnk = "$env:RUNNER_TEMP\PureEdit.lnk"
           $sh = New-Object -ComObject WScript.Shell
-          $s = $sh.CreateShortcut($lnk); $s.TargetPath = "$PWD\bin\leanterm.exe"; $s.Save()
-          $p = Start-Process -FilePath bin\leanterm.exe -ArgumentList '-set-shortcut-appid', 'org.leanterm.LeanEdit', "`"$lnk`"" -PassThru -Wait
+          $s = $sh.CreateShortcut($lnk); $s.TargetPath = "$PWD\bin\pureterm.exe"; $s.Save()
+          $p = Start-Process -FilePath bin\pureterm.exe -ArgumentList '-set-shortcut-appid', 'org.pureterm.PureEdit', "`"$lnk`"" -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "exit code $($p.ExitCode)" }
           $item = (New-Object -ComObject Shell.Application).NameSpace((Split-Path $lnk)).ParseName((Split-Path $lnk -Leaf))
           $id = $item.ExtendedProperty('System.AppUserModel.ID')
           Write-Output "AppUserModelID: $id"
-          if ($id -ne 'org.leanterm.LeanEdit') { throw "AppUserModelID not set: '$id'" }
+          if ($id -ne 'org.pureterm.PureEdit') { throw "AppUserModelID not set: '$id'" }
 
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: leanterm-windows
+          name: pureterm-windows
           path: |
-            bin/leanterm.exe
+            bin/pureterm.exe
             screenshot-windows.png
-            leanterm.log
+            pureterm.log

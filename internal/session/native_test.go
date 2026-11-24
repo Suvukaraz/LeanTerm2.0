@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/events"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/events"
 )
 
 // A native GUI drives a local shell with Subscribe, WriteBytes and Resize and

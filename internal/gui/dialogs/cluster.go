@@ -12,12 +12,12 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/cluster"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/form"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/services"
+	"github.com/Suvukaraz/PureTerm/internal/cluster"
+	"github.com/Suvukaraz/PureTerm/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/form"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/services"
 )
 
 // Session is an open terminal as the cluster windows list it.
@@ -96,7 +96,7 @@ func (a *ClusterAdmin) Layout(gtx layout.Context, th *gtk.Theme) {
 		return
 	}
 	a.f.Th = th
-	a.dlg.Title, a.dlg.Width, a.dlg.Closable = "Cluster Administration : LeanTerm", 750, true
+	a.dlg.Title, a.dlg.Width, a.dlg.Closable = "Cluster Administration : PureTerm", 750, true
 	if a.close.Clicked(gtx) || a.dlg.CloseRequested() {
 		a.open = false
 		return
@@ -402,7 +402,7 @@ func (p *PCC) Layout(gtx layout.Context, th *gtk.Theme) {
 		return
 	}
 	p.f.Th = th
-	p.dlg.Title, p.dlg.Width, p.dlg.Closable = "LeanTerm: Power Cluster Controller", 700, true
+	p.dlg.Title, p.dlg.Width, p.dlg.Closable = "PureTerm: Power Cluster Controller", 700, true
 	if p.close.Clicked(gtx) || p.dlg.CloseRequested() {
 		p.open = false
 		return
@@ -477,7 +477,7 @@ func (p *PCC) Layout(gtx layout.Context, th *gtk.Theme) {
 			form.Row(func(gtx layout.Context) layout.Dimensions {
 				return gtk.Entry{Placeholder: "Enter command to broadcast...", Width: 176, Size: gtk.Em(px12)}.Layout(gtx, th, &p.single)
 			}, button(th, &p.send, "Send", fonts.IconCogs, false, p.single.Text() == "")),
-			form.RowGap(16, f.CheckSize(&p.onEnter, "Send on <ENTER>", gtk.Em(px12), false), f.CheckSize(&p.useVars, "Use LeanTerm variables", gtk.Em(px12), false)),
+			form.RowGap(16, f.CheckSize(&p.onEnter, "Send on <ENTER>", gtk.Em(px12), false), f.CheckSize(&p.useVars, "Use PureTerm variables", gtk.Em(px12), false)),
 		)
 	} else {
 		entry = gapCol(8,
@@ -488,7 +488,7 @@ func (p *PCC) Layout(gtx layout.Context, th *gtk.Theme) {
 			},
 			form.FlexRow(8,
 				button(th, &p.clear, "Clear", fonts.IconTrash, false, false),
-				f.Check(&p.useVars, "Use LeanTerm variables", false),
+				f.Check(&p.useVars, "Use PureTerm variables", false),
 				form.Grow{W: func(gtx layout.Context) layout.Dimensions {
 					gtx.Constraints.Min.X = gtx.Constraints.Max.X
 					return layout.E.Layout(gtx, button(th, &p.execAll, "Execute All (Ctrl+Enter)", fonts.IconCogs, false, p.multiEd.Text() == ""))

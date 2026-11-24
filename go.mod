@@ -1,4 +1,4 @@
-module github.com/Suvukaraz/LeanTerm2.0
+module github.com/Suvukaraz/PureTerm
 
 go 1.26.0
 

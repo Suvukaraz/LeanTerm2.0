@@ -23,9 +23,9 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/fonts"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/gui/gtk"
-	"github.com/Suvukaraz/LeanTerm2.0/internal/sftpsvc"
+	"github.com/Suvukaraz/PureTerm/internal/gui/fonts"
+	"github.com/Suvukaraz/PureTerm/internal/gui/gtk"
+	"github.com/Suvukaraz/PureTerm/internal/sftpsvc"
 )
 
 // Panel is SftpPanel: header, toolbar, path bar, the file list,
@@ -44,7 +44,7 @@ type Panel struct {
 	ChooseFile func(title, dir string, folder bool) (string, error)
 	// OnClose hides the panel (× and "Hide browser").
 	OnClose func()
-	// OpenInEditor opens a file in LeanEdit ("Open in Editor"); nil hides
+	// OpenInEditor opens a file in PureEdit ("Open in Editor"); nil hides
 	// the item. OpensInEditor decides what a double click opens there.
 	OpenInEditor  func(path string)
 	OpensInEditor func(path string) bool
@@ -129,7 +129,7 @@ type queuedDrop struct {
 
 // pathsMime is the type of rows dragged inside the panel: their paths, one
 // per line.
-const pathsMime = "application/x-leanterm-paths"
+const pathsMime = "application/x-pureterm-paths"
 
 type rowState struct {
 	click widget.Clickable

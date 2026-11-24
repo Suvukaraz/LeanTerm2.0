@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Suvukaraz/LeanTerm2.0/internal/config"
+	"github.com/Suvukaraz/PureTerm/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,11 +64,11 @@ func TestSubstUserVariables(t *testing.T) {
 }
 
 func TestSubstEnvironment(t *testing.T) {
-	_ = os.Setenv("LEANTERM_TEST_VAR", "my_test_value")
-	defer os.Unsetenv("LEANTERM_TEST_VAR")
+	_ = os.Setenv("PURETERM_TEST_VAR", "my_test_value")
+	defer os.Unsetenv("PURETERM_TEST_VAR")
 
 	ctx := SubstContext{}
-	input := "env is <ENV:LEANTERM_TEST_VAR> and <ENV:DOES_NOT_EXIST_XYZ>"
+	input := "env is <ENV:PURETERM_TEST_VAR> and <ENV:DOES_NOT_EXIST_XYZ>"
 	res := Subst(input, ctx)
 
 	expected := "env is my_test_value and <ENV:DOES_NOT_EXIST_XYZ>"
